@@ -185,9 +185,24 @@ what teaches the boundary, is unchanged. Measurement: `eval/annotator_passes.md`
 
 ## Dataset Info
 
-- **Sources:** Greenhouse Job Board API (public boards), Lever, Ashby, HN "Who is hiring?"
-- **Language:** English-language postings only (v1)
-- **Roles:** Software and adjacent roles
+- **Sources:** Greenhouse Job Board API (public boards). 9 boards: cloudflare,
+  datadog, duolingo, getyourguide, gocardless, grafanalabs, monzo, stripe,
+  veriff. Lever / Ashby / HN "Who is hiring?" not wired.
+- **Language:** English-language postings only — enforced by
+  `src/pipeline/role_filter.py`, not assumed. One board contributed 8 Italian
+  sales postings.
+- **Roles:** Software and adjacent — enforced by the same filter.
+  **"Adjacent" includes pre-sales technical roles** (sales engineering, solutions
+  engineering, customer engineering): they are written for a technical reader and
+  make technical claims. It excludes quota-carrying sales, marketing, finance,
+  legal, recruiting and support.
+- **Scope filtering is not optional.** The fetcher pulls whole boards and these
+  employers hire mostly salespeople. Raw: 272 postings. In scope: **83 (31%)**.
+  After collapsing repeated role titles: **69**. The other 69% was
+  `Commercial Sales` 17, `Sales` 16, `Account Executives (EMEA)` 15,
+  `Field Sales` 13 — against `Engineering` 8 and `Data` 7, over 94 departments.
+  Sampling or aggregating unfiltered measures a classifier on finance and sales
+  postings while claiming software.
 - **Target corpus:** ~1,000 postings
 - **Aggregation:** By **seniority** and **region** only (NEVER by individual company)
 

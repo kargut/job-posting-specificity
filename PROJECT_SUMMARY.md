@@ -15,13 +15,17 @@ Weekend-sized LLM pipeline: taxonomy → extract → classify → evaluate → a
 | Hand labels | `eval/labeled.jsonl` | 3 synthetic examples + `posting_A` (36 claims), blind=false. Grow to ~150 blind claims |
 | Annotator consistency measurement | `eval/annotator_passes.md` | Measured: 75.0% exact / 80.6% boundary self-agreement |
 | Blind labeler CLI | `eval/label_claims.py` | Working (stdlib; `--selftest`, `--verify`) |
-| Eval sample + batch builder | `eval/make_batches.py` | Working (stratified across boards, seeded) |
+| Corpus scope filter | `src/pipeline/role_filter.py` | Working (English + software/adjacent) |
+| Eval sample + batch builder | `eval/make_batches.py` | Working (scope + dedupe + balanced, seeded) |
 | Eval report | `eval/RESULTS.md` | Annotator section measured; model sections empty |
 | Data schema | `data/schema.md` | Reference |
 
 ## Intentionally Not Built
 
 - Lever / Ashby / HN fetchers (Greenhouse is enough for v1)
+- `sumup` and `wolt` boards — dropped: sumup contributed 0 in-scope postings
+  (8 of its 10 were Italian sales roles) and wolt 1. Their rows are parked in
+  `data/raw/_dropped_boards.jsonl`.
 - Span-matching F1 for Stage 1 (extraction is spot-checked by reading, not scored)
 - Inter-annotator agreement (one annotator; only intra-annotator is available)
 - Hosted UI or charts app

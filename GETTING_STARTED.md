@@ -34,12 +34,23 @@ Build the sample and paste-ready batches first:
 python eval/make_batches.py          # 15 postings, 4 balanced batches
 ```
 
-The sample is **stratified across boards**, not uniform. Roughly half the corpus
-comes from three large US employers, so a uniform draw would spend half the eval
-set on one kind of document and tell you nothing about how the classifier behaves
-on small or European postings. One posting per board first, then round-robin;
-deterministic given `--seed`. It prints the region and seniority spread so you can
-see what the eval set actually covers.
+Three filters run before sampling, and none is cosmetic:
+
+1. **Scope.** `src/pipeline/role_filter.py` keeps English-language
+   software-and-adjacent postings. Unfiltered, **69% of the raw corpus is sales,
+   marketing and finance** — the fetcher pulls whole boards and these employers
+   hire mostly salespeople. 272 raw → 83 in scope.
+2. **Near-duplicate roles.** One posting per (company, normalized title). One
+   board listed the same Commercial Sales Engineer role in five cities. 83 → 69.
+3. **Balance.** Greedy selection across board, region and seniority at once.
+   Board-only stratification gave 14 senior / 1 unspecified with one Baltic
+   posting out of nine available; region and seniority are the two rollups this
+   project reports, and manager postings make very different claims from IC
+   postings.
+
+Deterministic given `--seed`. It prints the composition so you can see what the
+eval set covers. `--all-roles` and `--keep-duplicate-titles` disable filters 1
+and 2 if you need to inspect what they remove.
 
 Then, per batch, paste `prompts/stage1_extraction.md` followed by
 `eval/batches/batchN.txt` into Claude, Cursor, Gemini, etc.

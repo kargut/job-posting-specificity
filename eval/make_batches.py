@@ -2,15 +2,30 @@
 """
 Build the eval sample and paste-ready Stage 1 batches.
 
-The sample is stratified across boards, not drawn uniformly: 144 of the 307
-postings come from three large US employers, so a uniform draw would spend half
-the eval set on one kind of document and tell you nothing about how the
-classifier behaves on small or European postings. One posting per board first,
-then fill the remainder round-robin. Deterministic given --seed.
+Three filters run before sampling, because the raw corpus does not match the
+project's stated scope on its own:
+
+1. SCOPE. src/pipeline/role_filter.in_scope keeps English-language
+   software-and-adjacent postings. Unfiltered, 79% of the raw corpus was sales,
+   marketing and finance -- these employers hire mostly salespeople, and the
+   fetcher pulls whole boards.
+2. NEAR-DUPLICATE ROLES. One posting per (company, normalized title). One board
+   listed the same Commercial Sales Engineer role in five cities; five variants of
+   one role from one employer measure the same document five times.
+3. BALANCE. Greedy balanced selection across board, region and seniority at once.
+   Board-only stratification is not enough: it produced a sample of 14 senior and
+   1 unspecified with a single Baltic posting out of 9 available. Region and
+   seniority are the two rollups this project reports, and manager postings make
+   very different claims from IC postings, so an eval set skewed on either
+   dimension mis-measures the classifier.
+
+Deterministic given --seed.
 
 Usage:
   python eval/make_batches.py                      # 15 postings, 4 batches
   python eval/make_batches.py --postings 15 --batches 4 --seed 7
+  python eval/make_batches.py --all-roles          # skip the scope filter
+  python eval/make_batches.py --keep-duplicate-titles
 
 Writes (all gitignored — they contain real posting text):
   eval/batches/batch{N}.txt   paste after prompts/stage1_extraction.md
@@ -23,6 +38,7 @@ import argparse
 import ast
 import json
 import random
+import re
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -50,33 +66,60 @@ def parse_locations(row: dict) -> list[dict]:
     return locs or []
 
 
-def stratified_sample(rows: list[dict], n: int, seed: int) -> list[dict]:
-    """One per board first, then round-robin. Deterministic."""
-    by_board: dict[str, list[dict]] = defaultdict(list)
-    for r in rows:
-        by_board[r.get("source") or "unknown"].append(r)
+def dedupe_titles(rows: list[dict]) -> list[dict]:
+    """One posting per (company, normalized title)."""
+    seen: set[tuple[str, str]] = set()
+    out = []
+    for r in sorted(rows, key=lambda r: str(r.get("id"))):
+        t = (r.get("title") or "").lower()
+        t = re.sub(r"\(.*?\)", " ", t)
+        t = re.sub(r"\b(amer|emea|apac|latam|na|west|east|north|south|remote|"
+                   r"based in)\b", " ", t)
+        t = " ".join(re.sub(r"[^a-z ]", " ", t).split())
+        key = (r.get("company") or "", t)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(r)
+    return out
 
-    rng = random.Random(seed)
-    for board in by_board:
-        by_board[board].sort(key=lambda r: str(r.get("id")))
-        rng.shuffle(by_board[board])
 
+def balanced_sample(rows: list[dict], n: int, seed: int) -> list[dict]:
+    """Greedy selection balancing board, region and seniority simultaneously.
+
+    At each step, pick the candidate whose (board, region, seniority) cells are
+    currently least represented. Deterministic: ties break on a seeded shuffle.
+    """
+    try:
+        from pipeline.aggregate import infer_region, infer_seniority
+    except Exception:  # pragma: no cover
+        infer_region = lambda locs: "unknown"          # noqa: E731
+        infer_seniority = lambda t, c: "unknown"       # noqa: E731
+
+    def cells(r: dict) -> tuple[str, str, str]:
+        return (
+            r.get("source") or "unknown",
+            infer_region(parse_locations(r)),
+            infer_seniority(r.get("title", ""), [r.get("content", "")]),
+        )
+
+    pool = sorted(rows, key=lambda r: str(r.get("id")))
+    random.Random(seed).shuffle(pool)
+    counts: list[Counter] = [Counter(), Counter(), Counter()]
     picked: list[dict] = []
-    boards = sorted(by_board)
-    round_i = 0
-    while len(picked) < n:
-        progressed = False
-        for b in boards:
-            if len(picked) >= n:
-                break
-            if round_i < len(by_board[b]):
-                picked.append(by_board[b][round_i])
-                progressed = True
-        if not progressed:
-            break
-        round_i += 1
-    return picked
 
+    while pool and len(picked) < n:
+        best, best_cost = None, None
+        for r in pool:
+            # lower is better: how crowded this posting's cells already are
+            cost = tuple(counts[i][c] for i, c in enumerate(cells(r)))
+            if best_cost is None or cost < best_cost:
+                best, best_cost = r, cost
+        picked.append(best)
+        for i, c in enumerate(cells(best)):
+            counts[i][c] += 1
+        pool.remove(best)
+    return picked
 
 def pack_batches(rows: list[dict], k: int) -> list[list[dict]]:
     """Greedy bin-packing by content length so no batch is twice another."""
@@ -96,10 +139,21 @@ def main() -> None:
     ap.add_argument("--postings", type=int, default=15)
     ap.add_argument("--batches", type=int, default=4)
     ap.add_argument("--seed", type=int, default=7)
+    ap.add_argument("--all-roles", action="store_true",
+                    help="skip the English/software scope filter")
+    ap.add_argument("--keep-duplicate-titles", action="store_true",
+                    help="keep every variant of a repeated role title")
     args = ap.parse_args()
 
-    rows = load_raw(args.raw)
-    sample = stratified_sample(rows, args.postings, args.seed)
+    raw = load_raw(args.raw)
+    rows = raw
+    if not args.all_roles:
+        from pipeline.role_filter import in_scope
+        rows = [r for r in rows if in_scope(r)]
+    after_scope = len(rows)
+    if not args.keep_duplicate_titles:
+        rows = dedupe_titles(rows)
+    sample = balanced_sample(rows, args.postings, args.seed)
     args.out.mkdir(parents=True, exist_ok=True)
 
     (args.out / "sample_ids.txt").write_text(
@@ -120,8 +174,12 @@ def main() -> None:
     except Exception:
         region = sen = Counter()
 
-    print(f"corpus {len(rows)} postings, {len({r.get('source') for r in rows})} boards")
-    print(f"sample {len(sample)} postings, seed {args.seed}")
+    print(f"raw corpus        {len(raw)} postings, "
+          f"{len({r.get('source') for r in raw})} boards")
+    print(f"  in scope        {after_scope}"
+          f"{'  (filter skipped)' if args.all_roles else ''}")
+    print(f"  distinct roles  {len(rows)}")
+    print(f"sample            {len(sample)} postings, seed {args.seed}")
     print(f"  boards   {dict(Counter(r.get('source','') for r in sample))}")
     if region:
         print(f"  region   {dict(region)}")
