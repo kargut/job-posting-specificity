@@ -1,0 +1,11 @@
+# Normalize line endings. Without this, an editor rewriting a file with CRLF
+# shows up as "every line changed" in git status while `git diff` looks empty —
+# the 21-line LICENSE churn that prompted this file.
+* text=auto eol=lf
+
+# Explicit, so the ones that already churned stay put
+*.py      text eol=lf
+*.md      text eol=lf
+*.jsonl   text eol=lf
+*.txt     text eol=lf
+LICENSE   text eol=lf

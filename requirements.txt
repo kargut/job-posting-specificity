@@ -1,0 +1,6 @@
+# Python dependencies for job-posting-specificity
+# The Greenhouse fetcher uses only the standard library.
+# requests is optional if you adapt scripts to use it.
+
+# Dev / optional
+# requests>=2.31.0
