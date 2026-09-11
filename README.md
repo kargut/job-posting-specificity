@@ -32,7 +32,7 @@ No `.env` or stored API keys. Greenhouse public boards need no auth; pass `--boa
 | **1 — Extraction** | Split posting into discrete claims | LLM + `prompts/stage1_extraction.md` |
 | **2 — Classification** | Assign each claim Tier 1 / 2 / 3 | LLM + `prompts/stage2_classification.md` |
 | *(gold labels)* | Human tiers on Stage 1 spans, blind | `eval/label_claims.py` |
-| **3 — Aggregation** | Specificity scores + rollups | `src/pipeline/aggregate.py` |
+| **3 — Aggregation** | Specificity scores + rollups by seniority and region | `src/pipeline/aggregate.py` |
 
 ### Taxonomy
 
@@ -55,7 +55,7 @@ work is not a Tier 1 criterion. Full rule and worked boundary cases:
 ```
 .
 ├── src/fetchers/greenhouse.py     # Greenhouse Job Board API client
-├── src/pipeline/aggregate.py      # Stage 3 scoring + rollups
+├── src/pipeline/aggregate.py      # Stage 3 scoring + seniority/region rollups
 ├── prompts/                       # Stage 1–2 prompts (+ shared taxonomy)
 ├── data/schema.md                 # Canonical JSON shapes
 ├── data/raw/                      # Fetched postings (gitignored)
@@ -139,7 +139,15 @@ how the number was produced.
 6. **Equal weight per claim.** A salary range counts the same as a named
    database. A posting can raise its score by listing technologies while
    staying silent on pay.
-7. **Greenhouse only, English only.** Large US tech employers are
+7. **Only two rollups are reported: seniority and region.** Size and sector were
+   dropped because the data does not support them, not because they were
+   uninteresting. `company_size` is inferred from the posting text and resolved
+   to `unknown` for **143 of 144** postings in the first corpus — job postings do
+   not state headcount, and a larger sample cannot fix that. Every board in the
+   corpus is a software or fintech employer, so a sector rollup has one real
+   bucket; what the code separates is *department*, a narrower claim. Both values
+   stay in `results/scores.jsonl` as diagnostics.
+8. **Greenhouse only, English only.** Large US tech employers are
    over-represented, and their postings are written by people with a legal
    review process. Findings should not be read as applying to small European
    employers.

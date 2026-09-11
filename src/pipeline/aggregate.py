@@ -243,8 +243,6 @@ def summary_md(scores: list[dict], aggregates: dict) -> str:
             )
         lines.append("")
 
-    table("By Sector", aggregates["by_sector"], "sector")
-    table("By Company Size", aggregates["by_size"], "size_bracket")
     table("By Seniority", aggregates["by_seniority"], "seniority")
     table("By Region", aggregates["by_region"], "region")
     return "\n".join(lines)

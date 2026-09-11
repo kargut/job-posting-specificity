@@ -1,6 +1,18 @@
 # Stage 3: Aggregation & Analysis
 
-**Task:** Aggregate classified claims into per-posting specificity scores and rollup by sector/size/seniority/region.
+**Task:** Aggregate classified claims into per-posting specificity scores and roll
+up **by seniority and region**.
+
+> **Reported rollups are seniority and region only.** `sector` and
+> `company_size` are still computed per posting and kept in
+> `results/scores.jsonl` as diagnostics, but they are not reported: size resolves
+> to `unknown` for 143 of 144 postings (headcount is inferred from the posting
+> text, and postings do not state it), and every board in the corpus is a
+> software/fintech employer so sector has one real bucket. See
+> `prompts/shared_context.md` → "Rollups we do not report, and why".
+>
+> **Every number in the examples below is invented** to show the shape of the
+> output. Real figures live in `results/` after a run.
 
 **Input:** Classified claims from Stage 2 (with tier assignments)
 
@@ -58,7 +70,34 @@ For each classified posting, output:
 
 After scoring all postings, calculate rollups:
 
-### By Sector
+### By Seniority
+```json
+{
+  "seniority": "senior",
+  "count": 156,
+  "avg_specificity": 0.61
+}
+```
+
+### By Region
+```json
+{
+  "region": "baltics",
+  "count": 34,
+  "avg_specificity": 0.56,
+  "median_specificity": 0.57,
+  "percentiles": {"p10": 0.21, "p25": 0.38, "p50": 0.57, "p75": 0.70, "p90": 0.81}
+}
+```
+
+---
+
+## Computed but NOT reported
+
+Kept in `results/scores.jsonl` for auditing; excluded from the write-up and from
+`results/summary.md`.
+
+### By Sector — not reported (one real bucket)
 ```json
 {
   "sector": "software",
@@ -76,7 +115,7 @@ After scoring all postings, calculate rollups:
 }
 ```
 
-### By Company Size
+### By Company Size — not reported (99% `unknown`)
 ```json
 {
   "size_bracket": "50-200",
@@ -90,38 +129,19 @@ After scoring all postings, calculate rollups:
 }
 ```
 
-### By Seniority
-```json
-{
-  "seniority": "senior",
-  "count": 156,
-  "avg_specificity": 0.61,
-  "by_sector": {...}
-}
-```
-
-### By Region
-```json
-{
-  "region": "baltics",
-  "count": 34,
-  "avg_specificity": 0.56
-}
-```
-
 ---
 
 ## Metadata Rules
 
 Assign metadata based on posting content (use Stage 1 claims + common sense):
 
-**Company Size:**
+**Company Size** (diagnostic only — not reported):
 - "1–10 people" → `"1-10"`
 - "30-person startup" → `"10-50"`
 - "250+ employees" → `"200+"`
 - Unknown → `"unknown"`
 
-**Sector:**
+**Sector** (diagnostic only — not reported; this is really *department*):
 - Roles with "Engineer", "Developer", "Architecture" → `"software"`
 - Roles with "Data", "Analytics", "ML" → `"data"`
 - Roles with "Product", "Manager" (non-technical) → `"product"`
@@ -156,10 +176,10 @@ One line per posting with full score + metadata.
 {
   "generated_at": "2026-09-10T15:30:00Z",
   "corpus_size": 1043,
-  "by_sector": [...],
-  "by_size": [...],
   "by_seniority": [...],
-  "by_region": [...]
+  "by_region": [...],
+  "by_sector": [...],
+  "by_size": [...]
 }
 ```
 
@@ -175,24 +195,6 @@ One line per posting with full score + metadata.
 - **Median specificity:** 0.61
 - **Std. dev:** 0.16
 - **Range:** 0.05–0.97
-
-## By Sector
-| Sector | Count | Avg | Median |
-|--------|-------|-----|--------|
-| Software | 642 | 0.59 | 0.62 |
-| Data | 201 | 0.61 | 0.64 |
-| Product | 87 | 0.52 | 0.54 |
-| Design | 44 | 0.48 | 0.50 |
-| Other | 69 | 0.54 | 0.56 |
-
-## By Company Size
-| Size | Count | Avg | Median |
-|------|-------|-----|--------|
-| 1-10 | 156 | 0.62 | 0.65 |
-| 10-50 | 234 | 0.59 | 0.62 |
-| 50-200 | 312 | 0.57 | 0.60 |
-| 200+ | 234 | 0.56 | 0.58 |
-| Unknown | 107 | 0.54 | 0.56 |
 
 ## By Seniority
 | Level | Count | Avg | Median |
@@ -231,7 +233,8 @@ python src/pipeline/aggregate.py data/classified/claims.jsonl results/ \
 - [ ] Every posting has exactly one score (0.0 ≤ score ≤ 1.0)
 - [ ] Aggregates match when recalculated (audit a few hand)
 - [ ] No division-by-zero (postings with 0 claims are excluded)
-- [ ] Sector/size/seniority/region assigned consistently
+- [ ] Seniority and region assigned consistently (the two reported rollups)
+- [ ] `results/summary.md` contains no sector or size table
 - [ ] Percentiles are in order (p10 < p25 < p50 < p75 < p90)
 - [ ] Summary charts are readable and not misleading
 

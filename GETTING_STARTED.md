@@ -193,6 +193,20 @@ python src/pipeline/aggregate.py data/classified/claims.jsonl results/ \
 
 Writes `results/scores.jsonl`, `results/aggregates.json`, `results/summary.md`.
 
+**Reported rollups are seniority and region only.** `aggregate.py` also computes
+`sector` and `company_size` per posting and they remain in `scores.jsonl`, but
+neither is reported: size came back `unknown` for 143 of 144 postings in the first
+corpus (headcount is read out of the posting text, and postings do not state it),
+and every board in the corpus is a software/fintech employer, so sector has one
+real bucket. Reasoning in `prompts/shared_context.md`.
+
+**Outstanding code change:** `summary_md()` in `src/pipeline/aggregate.py`
+(around lines 246-247) still writes a `By Sector` and a `By Company Size` table
+into `results/summary.md`. Until those two `table(...)` calls are removed, a
+regenerated summary will contain the two rollups this project no longer reports.
+Delete them, and keep `by_sector` / `by_size` in `aggregates.json` as
+diagnostics.
+
 ## 9. Report
 
 Fill cost/latency and disagreement notes in `eval/RESULTS.md`, then update the

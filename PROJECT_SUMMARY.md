@@ -10,7 +10,7 @@ Weekend-sized LLM pipeline: taxonomy → extract → classify → evaluate → a
 | Claim extraction prompt | `prompts/stage1_extraction.md` | Ready |
 | Classification prompt | `prompts/stage2_classification.md` | Ready |
 | Shared taxonomy | `prompts/shared_context.md` | Ready |
-| Aggregation (scores + rollups) | `src/pipeline/aggregate.py` | Working |
+| Aggregation (scores + seniority/region rollups) | `src/pipeline/aggregate.py` | Working |
 | Label agreement checker | `eval/compare_labels.py` | Working |
 | Hand labels | `eval/labeled.jsonl` | 3 synthetic examples + `posting_A` (36 claims), blind=false. Grow to ~150 blind claims |
 | Annotator consistency measurement | `eval/annotator_passes.md` | Measured: 75.0% exact / 80.6% boundary self-agreement |
@@ -25,7 +25,12 @@ Weekend-sized LLM pipeline: taxonomy → extract → classify → evaluate → a
 - Inter-annotator agreement (one annotator; only intra-annotator is available)
 - Hosted UI or charts app
 - Automatic LLM batch runner (use Claude/Cursor/Gemini + the prompt files)
-- Per-company leaderboards (aggregates only: sector / size / seniority / region)
+- Per-company leaderboards (aggregates only: seniority / region)
+- Rollups by company size — `company_size` is inferred from posting text and came
+  back `unknown` for 143 of 144 postings; postings do not state headcount, so a
+  bigger corpus will not fix it. Kept as a per-posting diagnostic only.
+- Rollups by sector — every board in the corpus is a software/fintech employer, so
+  the rollup has one real bucket. What the code separates is *department*.
 
 ## Design Choices
 

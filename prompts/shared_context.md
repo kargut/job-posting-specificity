@@ -189,4 +189,23 @@ what teaches the boundary, is unchanged. Measurement: `eval/annotator_passes.md`
 - **Language:** English-language postings only (v1)
 - **Roles:** Software and adjacent roles
 - **Target corpus:** ~1,000 postings
-- **Aggregation:** By sector, company size, seniority, region (NEVER by individual company)
+- **Aggregation:** By **seniority** and **region** only (NEVER by individual company)
+
+### Rollups we do not report, and why
+
+`aggregate.py` still computes `sector` and `company_size` per posting — they stay
+in `results/scores.jsonl` as diagnostics — but neither is reported, because
+neither is supported by the data:
+
+- **Company size.** It is inferred from the posting text ("30-person startup",
+  "team of nine"). Measured over the first 144-posting corpus, it resolved to
+  `unknown` for **143 of 144** postings. Widening the corpus does not help: job
+  postings simply do not state headcount, so this is a property of the documents,
+  not of the sample.
+- **Sector.** Every board in the corpus is a software or fintech employer, so a
+  sector rollup has one real bucket. What `infer_sector` actually separates is
+  *department* (engineering / data / product / design), which is a different and
+  much narrower claim than "sector".
+
+"Postings almost never state headcount" is itself a finding about specificity and
+belongs in the write-up as prose — not as a rollup table that is 99% one cell.

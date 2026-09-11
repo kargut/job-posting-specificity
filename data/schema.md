@@ -131,6 +131,12 @@ Acceptable alternate key: `classifications` instead of `claims` (same object sha
 
 Aggregated per-posting specificity scores.
 
+`sector` and `company_size` are present but **not reported** — they are
+diagnostics. `company_size` resolved to `unknown` for 143 of 144 postings in the
+first corpus, and every board sampled is a software/fintech employer. Only
+`seniority` and `region` are rolled up. See `prompts/shared_context.md` →
+"Rollups we do not report, and why".
+
 ```json
 {
   "posting_id": "greenhouse_token_12345",
