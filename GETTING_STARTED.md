@@ -28,8 +28,21 @@ Or omit `--boards` and enter tokens when prompted. Tokens are the path segment i
 Extraction comes **before** hand-labeling. This is deliberate — see
 "Why extraction comes first" below.
 
-Use `prompts/stage1_extraction.md` in Claude, Cursor, Gemini, etc. on a sample
-of **~15 postings** from `data/raw/raw_postings.jsonl`.
+Build the sample and paste-ready batches first:
+
+```bash
+python eval/make_batches.py          # 15 postings, 4 balanced batches
+```
+
+The sample is **stratified across boards**, not uniform. Roughly half the corpus
+comes from three large US employers, so a uniform draw would spend half the eval
+set on one kind of document and tell you nothing about how the classifier behaves
+on small or European postings. One posting per board first, then round-robin;
+deterministic given `--seed`. It prints the region and seniority spread so you can
+see what the eval set actually covers.
+
+Then, per batch, paste `prompts/stage1_extraction.md` followed by
+`eval/batches/batchN.txt` into Claude, Cursor, Gemini, etc.
 
 - Output: append JSON lines to `data/extracted/claims.jsonl`
 

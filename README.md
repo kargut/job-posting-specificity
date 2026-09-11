@@ -10,7 +10,8 @@ Portfolio piece: GitHub repo + one write-up, focused on taxonomy design, evaluat
 # 1. Fetch jobs (stdlib only — no pip install required)
 python src/fetchers/greenhouse.py --boards stripe,datadog --limit 50
 
-# 2. Stage 1: extract claims from a ~15-posting sample (LLM + prompts/stage1_extraction.md)
+# 2. Stage 1: build a stratified sample, then extract claims with an LLM
+python eval/make_batches.py   # → eval/batches/batchN.txt + prompts/stage1_extraction.md
 # 3. Hand-label TIERS on those spans, blind — the labeler enforces the rule
 python eval/label_claims.py --postings 15 --per-posting 10
 python eval/label_claims.py --verify eval/labeled.jsonl
@@ -62,6 +63,7 @@ work is not a Tier 1 criterion. Full rule and worked boundary cases:
 ├── data/extracted/                # Stage 1 output (gitignored)
 ├── data/classified/               # Stage 2 output (gitignored)
 ├── eval/labeled.jsonl             # Hand labels (gitignored; local only)
+├── eval/make_batches.py           # Stratified eval sample → Stage 1 batches
 ├── eval/label_claims.py           # Blind tier labeler + label linter
 ├── eval/compare_labels.py         # Agreement metrics
 ├── eval/annotator_passes.md       # Intra-annotator consistency measurement

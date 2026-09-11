@@ -15,6 +15,7 @@ Weekend-sized LLM pipeline: taxonomy → extract → classify → evaluate → a
 | Hand labels | `eval/labeled.jsonl` | 3 synthetic examples + `posting_A` (36 claims), blind=false. Grow to ~150 blind claims |
 | Annotator consistency measurement | `eval/annotator_passes.md` | Measured: 75.0% exact / 80.6% boundary self-agreement |
 | Blind labeler CLI | `eval/label_claims.py` | Working (stdlib; `--selftest`, `--verify`) |
+| Eval sample + batch builder | `eval/make_batches.py` | Working (stratified across boards, seeded) |
 | Eval report | `eval/RESULTS.md` | Annotator section measured; model sections empty |
 | Data schema | `data/schema.md` | Reference |
 
@@ -53,7 +54,8 @@ Weekend-sized LLM pipeline: taxonomy → extract → classify → evaluate → a
 1. Re-label `posting_A` blind under the written Tier 1 rule
    (`python eval/label_claims.py --pass 3 --relabel`); gold currently holds
    pass 1 + the corrected degree-requirement call, and is marked blind=false
-2. Stage 1 over a ~15-posting sample → ~150 claims after a 10-per-posting cap
+2. `python eval/make_batches.py`, then Stage 1 over the 15-posting sample →
+   ~150 claims after a 10-per-posting cap
 3. Label tiers blind; re-label ~30 claims to re-measure self-agreement
 4. Stage 2 on the same claims, then `python eval/compare_labels.py ...`
 5. Spot-check extraction on 2-3 postings for the limitations section
