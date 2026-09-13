@@ -40,25 +40,43 @@ a classifier at 80% boundary agreement is at the annotator's own noise floor.
 
 ## Reproducing these numbers
 
-The figures above use **raw pass-1 tiers**, listed above. The gold file
-`eval/labeled.jsonl` now holds pass 1 **plus one deliberate correction** —
-claim 26 moved to tier 2, because "or related field, or equivalent experience"
-dissolves the requirement. So re-running the comparison against the current gold
-gives slightly different numbers:
-
 ```bash
-python eval/compare_labels.py eval/labeled.jsonl eval/labeled_pass2.jsonl \
+python eval/compare_labels.py eval/labeled_pass1.jsonl eval/labeled_pass2.jsonl \
     --self-agreement
 ```
 
-| | raw pass 1 vs pass 2 | current gold vs pass 2 |
-|---|---|---|
-| Exact-tier agreement | 75.0% | 77.8% |
-| Tier 1 / Other agreement | 80.6% | 83.3% |
+Both passes now live in their own files. `eval/labeled.jsonl` holds only the
+blind gold set (15 postings, 150 claims, all `blind: true`), so nothing
+non-blind can leak into a model-agreement number.
 
-The gap is that single correction, not drift. Quote the left column as the
-pre-rule noise floor.
+| | value |
+|---|---|
+| Exact-tier agreement | 77.8% |
+| Tier 1 / Other agreement | 83.3% |
+
+These differ slightly from the 75.0% / 80.6% quoted above because
+`labeled_pass1.jsonl` carries one deliberate correction — claim 26 moved to
+Tier 2, the escape hatch. The raw pass-1 tiers are listed above; quote
+**75.0% / 80.6%** as the pre-rule noise floor, since that is the honest
+before-and-after on identical labels.
 
 `--self-agreement` is required: without it `compare_labels.py` refuses a
-predictions file that carries no `predicted_tier`, because comparing labels to
+predictions file carrying no `predicted_tier`, because comparing labels to
 labels silently produces a flattering number.
+
+## Post-rule self-agreement — still to measure
+
+The pre-rule figure above is a ceiling on what any model number can mean. The
+matching post-rule figure is **not** measured by re-labeling this posting: it
+should be measured on the blind gold set, which is the corpus the model is
+actually scored against.
+
+```bash
+python eval/label_claims.py --pass 2 --shuffle --relabel \
+    --out eval/labeled_pass2_blind.jsonl --limit 30
+python eval/compare_labels.py eval/labeled.jsonl eval/labeled_pass2_blind.jsonl \
+    --self-agreement
+```
+
+Thirty claims, a day after the first pass. Expect >90% if the written rule did
+its job.

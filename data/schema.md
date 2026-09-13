@@ -26,7 +26,18 @@ One JSON object per line. Each line is a normalized job posting from any source.
 
 ## Labeled Corpus (`eval/labeled.jsonl`)
 
-Human gold labels for the evaluation set.
+Human gold labels for the evaluation set. **This file holds blind labels only.**
+
+| File | Contents |
+|---|---|
+| `eval/labeled.jsonl` | The gold set: 15 postings, 150 claims, every row `blind: true` |
+| `eval/labeled_pass1.jsonl` | One posting labeled before the written Tier 1 rule existed, `blind: false`. Kept solely as the first term of the intra-annotator agreement measurement |
+| `eval/labeled_pass2.jsonl` | The second pass over that same posting, the other term |
+| `eval/labeled_examples.jsonl` | Three synthetic postings that demonstrate the file format |
+
+Keeping non-blind labels out of `labeled.jsonl` means no model-agreement number
+can accidentally be computed against labels made with model output visible. All
+four are gitignored — they contain real posting text.
 
 **Tiers are adjudicated on Stage 1's extracted spans, not on independently
 extracted claims.** `eval/compare_labels.py` pairs gold and predicted claims by

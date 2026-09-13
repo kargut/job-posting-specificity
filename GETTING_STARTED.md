@@ -163,12 +163,14 @@ format, plus one real posting.
 
 Before trusting any model number, measure the noise floor.
 
-Re-label ~30 of the claims blind, a day later, into a separate file:
+Re-label ~30 claims **from the gold set** blind, a day later, into a separate
+file — not from some earlier posting. The number you want is self-agreement on
+the corpus the model is actually scored against:
 
 ```bash
 python eval/label_claims.py --pass 2 --shuffle --relabel \
-  --out eval/labeled_pass2.jsonl --limit 30
-python eval/compare_labels.py eval/labeled.jsonl eval/labeled_pass2.jsonl \
+  --out eval/labeled_pass2_blind.jsonl --limit 30
+python eval/compare_labels.py eval/labeled.jsonl eval/labeled_pass2_blind.jsonl \
   --self-agreement
 ```
 
