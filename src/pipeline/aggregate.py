@@ -116,6 +116,12 @@ def unmapped_section(claim: dict) -> str | None:
 # development of new detection logic". Measured over 782 in-scope postings, 268
 # (34%) were labelled senior with no seniority word in the title at all, giving
 # senior 644 / mid 1. A bucket that fires once in 782 is a bug, not a finding.
+try:  # the same definition the sampler uses, so scope cannot drift between them
+    from pipeline.role_filter import in_scope
+except ImportError:  # when run as a script from inside src/
+    from role_filter import in_scope  # type: ignore
+
+
 TITLE_SENIOR = re.compile(
     r"\b(principal|staff|senior|sr\.?|lead|head of|director|vp|"
     r"vice president|distinguished|fellow)\b",
@@ -432,6 +438,12 @@ def main() -> None:
         default=Path("data/raw/raw_postings.jsonl"),
         help="Optional raw postings JSONL for title/location metadata",
     )
+    parser.add_argument(
+        "--all-roles",
+        action="store_true",
+        help="score every classified posting, skipping the English + "
+             "software/adjacent scope filter the eval set and write-up assume",
+    )
     args = parser.parse_args()
 
     classified_path = args.classified
@@ -449,14 +461,27 @@ def main() -> None:
 
     scores: list[dict] = []
     skipped = 0
+    out_of_scope = 0
     unmapped: Counter = Counter()
     for row in classified:
         pid = str(row.get("posting_id") or "")
-        scored = score_posting(row, raw_by_id.get(pid), unmapped)
+        raw = raw_by_id.get(pid)
+        # Corpus scope is enforced here as well as at sampling time. Without it,
+        # a full-corpus run aggregates over the ~64% of fetched postings the eval
+        # set excludes -- sales, marketing and finance roles -- and the write-up
+        # would describe a different corpus than the one it measured.
+        if raw is not None and not args.all_roles and not in_scope(raw):
+            out_of_scope += 1
+            continue
+        scored = score_posting(row, raw, unmapped)
         if scored is None:
             skipped += 1
             continue
         scores.append(scored)
+
+    if out_of_scope:
+        print(f"Skipped {out_of_scope} posting(s) outside corpus scope "
+              f"(English + software/adjacent). Use --all-roles to include them.")
 
     if not scores:
         print("Error: no scorable postings found.", file=sys.stderr)
