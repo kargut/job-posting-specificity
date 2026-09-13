@@ -254,6 +254,49 @@ Hand-picked cases where human and model disagreed. Note explicitly where the
 **model was right and the human wrong** — after section 1, that is a live
 possibility and saying so is part of the point.
 
+_To fill in after Stage 2._
+
+### Pre-registered: labels already suspected wrong, before Stage 2 ran
+
+Recorded **before** any model output existed, so that if the classifier disagrees
+on these the analysis cannot be accused of deciding after the fact that the model
+was right. They are left in the gold set unchanged — editing blind labels once a
+pattern is visible is the anchoring failure the protocol exists to prevent.
+
+**A. Tier 1 on the employer's own name (4 claims, one posting pair).**
+All four justify Tier 1 by quoting `Stripe` in a posting *by* Stripe. A company
+naming itself is not a checkable particular about the job on offer.
+
+| Claim | Verdict |
+|---|---|
+| "Millions of companies—from the world's largest enterprises to the most ambitious startups—use Stripe to accept payments, grow their revenue, and accelerate new business opportunities" | **Likely wrong.** Marketing scale language; "millions" is not a falsifiable commitment about the role |
+| "Stripe Terminal helps Stripe users extend their online presence into the physical world" | **Defensible.** `Stripe Terminal` is a named product — a real particular about what you would work on |
+| "The Terminal team's mission is to make it as easy for businesses to accept in-person payments as the Stripe API has done for online payments" | **Borderline.** Names `Stripe API` and the team, but the sentence is a mission statement |
+| "Share research insights that deepen Stripe's understanding of user needs" | **Likely wrong.** Commits to nothing checkable; the quoted token is just the employer |
+
+If the classifier puts the first and fourth in Tier 2, that is the model being
+right and the annotator wrong, and should be reported as such.
+
+**B. Tier 1 on `English` (2 claims).**
+`Proficient in both spoken and written English.` and `Excellent written and
+verbal communication skills in English` were both labeled Tier 1 with
+`credential: "English"`. English is a named language, but essentially every
+posting in an English-only corpus requires it, so it separates nothing. This is
+the false-positive class described in section 5.
+
+**C. A slogan labeled Tier 2 (1 claim).**
+`on a mission to empower small businesses across the globe` was labeled Tier 2
+("no number"). By the deletion test it is Tier 3 — it could appear verbatim in an
+ad for a different job at a different company. One of only four slogan-shaped
+claims that reached the sample at all, which is why section 5 treats the Tier 3
+absence as both an extraction and a taxonomy problem.
+
+**Net effect.** Items A and B both inflate Tier 1; item C removes the single
+clearest Tier 3 candidate. All three push the reported 0.407 in the same
+direction — upward — which is consistent with the two structural biases in
+section 5. Seven suspect labels out of 150 is roughly 4.7%, well inside the
+annotator's own measured inconsistency of ~19% on exact tier.
+
 ## Quality Gates
 
 - [ ] Tier 1 boundary accuracy ≥ 80%
