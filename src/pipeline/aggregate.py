@@ -20,7 +20,7 @@ import json
 import re
 import statistics
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -48,6 +48,63 @@ def claim_items(row: dict) -> list[dict]:
 def claim_tier(claim: dict) -> int | None:
     tier = claim.get("predicted_tier", claim.get("tier"))
     return int(tier) if tier in (1, 2, 3) else None
+
+
+# Role context vs employer context.
+#
+# Why this split exists: Tier 1 is a mechanical test -- a number, a named place,
+# an explicit timeframe -- and an employer's philanthropy or product-marketing
+# section passes it effortlessly while promising the candidate nothing. In the
+# first extracted batch one posting was 40% employer-context claims and the other
+# two were 16% and 18%. Scoring them together means the headline number partly
+# measures how much marketing an employer bolts on, so both numbers are reported:
+# specificity_score (role context, the headline) and specificity_score_all_claims.
+#
+# The partition rests on context_section, which is a MODEL OUTPUT, not a checked
+# fact. A mislabelled claim lands in the wrong bucket. That is why both numbers
+# and employer_context_share are reported rather than one silently-cut number,
+# and why unmapped section names are printed instead of quietly defaulting.
+EMPLOYER_CONTEXT_SECTIONS = frozenset(
+    {"company", "company programs", "culture/values"}
+)
+ROLE_CONTEXT_SECTIONS = frozenset(
+    {
+        "role",
+        "team",
+        "responsibilities",
+        "requirements",
+        "preferred qualifications",
+        "tech stack",
+        "product scope",
+        "compensation",
+        "benefits",
+        "location/schedule",
+        "level",
+        "reporting line",
+        "hiring process",
+    }
+)
+
+
+def normalize_section(name: str | None) -> str:
+    return " ".join((name or "").strip().lower().split())
+
+
+def claim_context(claim: dict) -> str:
+    """"employer" or "role". Unknown sections default to role context -- the
+    conservative direction, since it keeps a claim in the headline number rather
+    than silently removing it -- and main() prints every name it had to guess."""
+    return "employer" if normalize_section(claim.get("context_section")) \
+        in EMPLOYER_CONTEXT_SECTIONS else "role"
+
+
+def unmapped_section(claim: dict) -> str | None:
+    sec = normalize_section(claim.get("context_section"))
+    if not sec:
+        return "(missing)"
+    if sec in EMPLOYER_CONTEXT_SECTIONS or sec in ROLE_CONTEXT_SECTIONS:
+        return None
+    return sec
 
 
 # Seniority is read from the TITLE. The body is consulted only as a fallback, and
@@ -162,17 +219,37 @@ def infer_company_size(claim_texts: list[str]) -> str:
     return "200+"
 
 
-def score_posting(row: dict, raw_meta: dict | None = None) -> dict | None:
+def score_posting(
+    row: dict,
+    raw_meta: dict | None = None,
+    unmapped: Counter | None = None,
+) -> dict | None:
     items = claim_items(row)
-    tiers = [t for t in (claim_tier(c) for c in items) if t is not None]
-    if not tiers:
+    scored = [(c, claim_tier(c)) for c in items]
+    scored = [(c, t) for c, t in scored if t is not None]
+    if not scored:
         return None
 
+    if unmapped is not None:
+        for c, _ in scored:
+            name = unmapped_section(c)
+            if name:
+                unmapped[name] += 1
+
+    tiers = [t for _, t in scored]
     t1 = sum(1 for t in tiers if t == 1)
     t2 = sum(1 for t in tiers if t == 2)
     t3 = sum(1 for t in tiers if t == 3)
     total = t1 + t2 + t3
-    score = t1 / total if total else 0.0
+    score_all = t1 / total if total else 0.0
+
+    role_tiers = [t for c, t in scored if claim_context(c) == "role"]
+    role_total = len(role_tiers)
+    role_t1 = sum(1 for t in role_tiers if t == 1)
+    # None, not 0.0: a posting whose every claim is about the employer has no
+    # role-context score at all, and averaging a 0.0 in would be a fabrication.
+    role_score = round(role_t1 / role_total, 4) if role_total else None
+    employer_total = total - role_total
 
     claim_texts = [c.get("text") or "" for c in items]
     meta = raw_meta or {}
@@ -204,7 +281,13 @@ def score_posting(row: dict, raw_meta: dict | None = None) -> dict | None:
         "tier_1_claims": t1,
         "tier_2_claims": t2,
         "tier_3_claims": t3,
-        "specificity_score": round(score, 4),
+        # Headline: role-context claims only. See EMPLOYER_CONTEXT_SECTIONS.
+        "specificity_score": role_score,
+        "specificity_score_all_claims": round(score_all, 4),
+        "role_claims": role_total,
+        "role_tier_1_claims": role_t1,
+        "employer_claims": employer_total,
+        "employer_context_share": round(employer_total / total, 4) if total else 0.0,
         "sector": sector,
         "company_size": size,
         "seniority": seniority,
@@ -237,19 +320,34 @@ def percentiles(values: list[float]) -> dict:
 
 
 def rollup(scores: list[dict], key: str) -> list[dict]:
-    groups: dict[str, list[float]] = defaultdict(list)
+    """Group by `key` and report both scores side by side.
+
+    `count` is every posting in the group; `scored_count` is how many of them had
+    at least one role-context claim. They differ only when a posting is entirely
+    employer context, which is itself worth seeing.
+    """
+    groups: dict[str, list[dict]] = defaultdict(list)
     for s in scores:
-        groups[str(s.get(key) or "unknown")].append(s["specificity_score"])
+        groups[str(s.get(key) or "unknown")].append(s)
+
+    def mean(vals: list[float]) -> float | None:
+        return round(statistics.mean(vals), 4) if vals else None
 
     out = []
-    for label, vals in sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0])):
+    for label, rows in sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0])):
+        vals = [r["specificity_score"] for r in rows if r["specificity_score"] is not None]
+        all_vals = [r["specificity_score_all_claims"] for r in rows]
+        shares = [r["employer_context_share"] for r in rows]
         out.append(
             {
                 key if key != "company_size" else "size_bracket": label,
-                "count": len(vals),
-                "avg_specificity": round(statistics.mean(vals), 4),
-                "median_specificity": round(statistics.median(vals), 4),
+                "count": len(rows),
+                "scored_count": len(vals),
+                "avg_specificity": mean(vals),
+                "median_specificity": round(statistics.median(vals), 4) if vals else None,
                 "std_dev": round(statistics.pstdev(vals), 4) if len(vals) > 1 else 0.0,
+                "avg_specificity_all_claims": mean(all_vals),
+                "avg_employer_context_share": mean(shares),
                 "percentiles": percentiles(vals),
             }
         )
@@ -257,28 +355,55 @@ def rollup(scores: list[dict], key: str) -> list[dict]:
 
 
 def summary_md(scores: list[dict], aggregates: dict) -> str:
-    vals = [s["specificity_score"] for s in scores]
+    vals = [s["specificity_score"] for s in scores if s["specificity_score"] is not None]
+    all_vals = [s["specificity_score_all_claims"] for s in scores]
+    shares = [s["employer_context_share"] for s in scores]
+    no_role = len(scores) - len(vals)
+
+    def stat(fn, v: list[float]) -> str:
+        return f"{fn(v):.2f}" if v else "—"
+
     lines = [
         "# Specificity Scores: Summary",
         "",
         "## Overall",
         f"- **Postings analyzed:** {len(scores)}",
-        f"- **Average specificity:** {statistics.mean(vals):.2f}" if vals else "- **Average specificity:** —",
-        f"- **Median specificity:** {statistics.median(vals):.2f}" if vals else "- **Median specificity:** —",
-        f"- **Std. dev:** {statistics.pstdev(vals):.2f}" if len(vals) > 1 else "- **Std. dev:** —",
+        f"- **Average specificity (role context):** {stat(statistics.mean, vals)}",
+        f"- **Median specificity (role context):** {stat(statistics.median, vals)}",
+        f"- **Std. dev:** {stat(statistics.pstdev, vals) if len(vals) > 1 else '—'}",
         f"- **Range:** {min(vals):.2f}–{max(vals):.2f}" if vals else "- **Range:** —",
+        f"- **Average specificity (all claims):** {stat(statistics.mean, all_vals)}",
+        f"- **Average employer-context share:** {stat(statistics.mean, shares)}",
+        "",
+        "Two scores are reported. The headline counts only claims about the role;",
+        "the second counts every extracted claim, including the employer's own",
+        "company and culture sections. The gap between them is how much of a",
+        "posting's apparent specificity is about the employer rather than the job.",
+        "The split rests on Stage 1's `context_section`, which is a model output,",
+        "not a checked fact — see the limitations section.",
         "",
     ]
+    if no_role:
+        lines.insert(
+            4,
+            f"- **Postings with no role-context claims:** {no_role} "
+            f"(excluded from the headline average)",
+        )
 
     def table(title: str, rows: list[dict], label_key: str) -> None:
         lines.append(f"## {title}")
-        lines.append(f"| {label_key} | Count | Avg | Median |")
-        lines.append("|---|---:|---:|---:|")
+        lines.append(f"| {label_key} | Count | Avg (role) | Median (role) | "
+                     f"Avg (all claims) | Employer share |")
+        lines.append("|---|---:|---:|---:|---:|---:|")
         for r in rows:
             label = r.get(label_key) or r.get("size_bracket") or "?"
+            def num(key: str) -> str:
+                v = r.get(key)
+                return f"{v:.2f}" if v is not None else "—"
             lines.append(
-                f"| {label} | {r['count']} | {r['avg_specificity']:.2f} | "
-                f"{r['median_specificity']:.2f} |"
+                f"| {label} | {r['count']} | {num('avg_specificity')} | "
+                f"{num('median_specificity')} | {num('avg_specificity_all_claims')} | "
+                f"{num('avg_employer_context_share')} |"
             )
         lines.append("")
 
@@ -324,9 +449,10 @@ def main() -> None:
 
     scores: list[dict] = []
     skipped = 0
+    unmapped: Counter = Counter()
     for row in classified:
         pid = str(row.get("posting_id") or "")
-        scored = score_posting(row, raw_by_id.get(pid))
+        scored = score_posting(row, raw_by_id.get(pid), unmapped)
         if scored is None:
             skipped += 1
             continue
@@ -359,7 +485,19 @@ def main() -> None:
     summary_path = out / "summary.md"
     summary_path.write_text(summary_md(scores, aggregates), encoding="utf-8")
 
+    no_role = sum(1 for s in scores if s["specificity_score"] is None)
+
     print(f"Scored {len(scores)} postings ({skipped} skipped with 0 claims)")
+    if no_role:
+        print(f"  {no_role} posting(s) had no role-context claims — "
+              f"no headline score, all-claims score only")
+    if unmapped:
+        print("  WARNING: context_section values not in the Stage 1 vocabulary, "
+              "counted as ROLE context:")
+        for name, n in unmapped.most_common(12):
+            print(f"    {n:5d}  {name}")
+        print("    Fix prompts/stage1_extraction.md or extend the section sets "
+              "in this file; do not leave them guessed.")
     print(f"  {scores_path}")
     print(f"  {agg_path}")
     print(f"  {summary_path}")

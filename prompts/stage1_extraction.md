@@ -19,6 +19,12 @@
    - Contact information
    - Company taglines without assertion
 
+   But DO extract claims about what the hiring *process is*: named interview
+   stages, a number of rounds, a stated timeline, whether an onsite is expected.
+   "Apply via our website" is an instruction and is dropped; "our average process
+   takes around 4 weeks" is a checkable commitment, and is often one of the most
+   concrete things in the posting.
+
 3. **One claim per assertion.** Break compound sentences into atomic claims:
    - ❌ "€60k, Go, remote" (one line, but three claims)
    - ✓ Break into: "€60,000", "Go", "remote"
@@ -31,11 +37,56 @@
 
 5. **Order matters for context.** If a claim at the start of a section sets context for claims later, note that (you'll use it in Stage 2).
 
+6. **Tag every claim with a `context_section` from the fixed list below.** Do not
+   invent section names. Stage 3 partitions claims into role context and employer
+   context using this field, and an invented name silently lands claims in the
+   wrong bucket.
+
+---
+
+## Context sections (closed list)
+
+Every claim takes exactly one of these values. If a claim seems to fit none of
+them, pick the closest role-context value rather than inventing a name.
+
+**Employer context** — about the company, not the job:
+
+| Value | Covers |
+|---|---|
+| `Company` | what the company is, does, sells, how big or old it is |
+| `Company programs` | philanthropy, public products, press and awards |
+| `Culture/values` | how the company says it works and what it says it values |
+
+**Role context** — about the job being advertised:
+
+| Value | Covers |
+|---|---|
+| `Role` | what the role is, its purpose and scope |
+| `Team` | the team joined, its size, mission, who is on it |
+| `Responsibilities` | what the person will do |
+| `Requirements` | stated musts: experience, skills, credentials |
+| `Preferred qualifications` | nice-to-haves, explicitly optional |
+| `Tech stack` | named languages, tools, infrastructure |
+| `Product scope` | the products or surfaces the role works on |
+| `Compensation` | salary, equity, bonus, incentives |
+| `Benefits` | leave, budgets, perks, relocation, visas |
+| `Location/schedule` | place, remote/hybrid rules, hours, flexibility |
+| `Level` | seniority, ladder level, band |
+| `Reporting line` | who the role reports to |
+| `Hiring process` | interview stages, timeline, what the process involves |
+
+Why the split exists: an employer's philanthropy section is full of numbers,
+named places and dates, so it scores as highly specific under Stage 2's test
+while promising the candidate nothing. Stage 3 reports the role-context score and
+the all-claims score side by side. Extract employer-context claims normally — do
+not drop them — just label them honestly.
+
 ---
 
 ## Output Format
 
-Return a JSON array of claims. Each claim has:
+Return a JSON array of claims. Each claim has (`context_section` must be one of
+the closed-list values above):
 
 ```json
 {
@@ -163,3 +214,5 @@ claude code run --prompt-file prompts/stage1_extraction.md --input-file data/raw
 - [ ] Boilerplate actually dropped (no company taglines, legal, application instructions)
 - [ ] Spans are verbatim substrings of the posting (typos and all)
 - [ ] No overly broad claims ("we hire good people" — too vague; break into specifics if any)
+- [ ] Every `context_section` is one of the closed-list values — no invented names
+- [ ] Interview-process claims kept; application instructions dropped
