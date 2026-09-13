@@ -130,8 +130,24 @@ how the number was produced.
    claim pairing exact and the classification metric honest, but it means
    **extraction errors are invisible to the boundary metric** — a claim the
    extractor never found cannot be counted wrong.
-3. **Extraction is not scored numerically.** It is spot-checked by reading 2-3
-   postings. Span-matching F1 was judged out of scope for a weekend.
+3. **Extraction is not scored numerically, and it omits slogans — which
+   inflates every score.** Stage 1 is spot-checked by reading postings against
+   their claims, not scored (span-matching F1 was judged out of scope). All 745
+   extracted claims are verbatim and no boilerplate slipped through, but reading
+   two postings sentence by sentence showed the extractor skipping mission and
+   atmosphere language — "we're on a mission to make money work for everyone",
+   "a highly ambitious, large-scale technology company with a soul". Those are
+   Tier 3 by the taxonomy's own deletion test.
+
+   Because the score is `tier_1 / (tier_1 + tier_2 + tier_3)`, dropping slogans
+   removes Tier 3 from the **denominator only**, so the bias runs one way: scores
+   are too high. If every omitted non-boilerplate sentence in those two postings
+   were Tier 3, their scores would fall by 30% and 28% relative — an upper bound
+   near 29%, not an estimate, since some omitted sentences are not slogans and
+   some restate an extracted claim. **Absolute specificity scores are therefore
+   optimistic by an unquantified margin; comparisons between postings still hold,
+   because the bias applies to all of them in the same direction.** The fix is a
+   Stage 1 prompt change and a re-run. Detail in `eval/RESULTS.md` section 5.
 4. **Small eval set.** ~150 claims, so the boundary accuracy carries roughly
    ±7pp at 95% confidence. Claims of a few points' improvement are not
    supportable at this size.
