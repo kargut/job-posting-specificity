@@ -196,6 +196,15 @@ what teaches the boundary, is unchanged. Measurement: `eval/annotator_passes.md`
   engineering, customer engineering): they are written for a technical reader and
   make technical claims. It excludes quota-carrying sales, marketing, finance,
   legal, recruiting and support.
+- **Fetch amounts are per board, not one flat cap.** Boards differ by an order of
+  magnitude (9 jobs to 240+). The first corpus used a shared `--limit 25` and the
+  fetcher truncated with `jobs[:limit]` — but the Greenhouse API returns a board
+  in roughly alphabetical order by title, so that took an **alphabetical slice,
+  not a sample**: all 45 postings from one board had titles starting with "A", as
+  did all 10 from another. The corpus filled with Account Executives, and two
+  boards looked as though they had no engineering roles. The fetcher now fetches
+  whole boards by default, accepts per-board caps (`--boards stripe:80,veriff`),
+  and when a cap applies it samples with a seeded RNG instead of truncating.
 - **Scope filtering is not optional.** The fetcher pulls whole boards and these
   employers hire mostly salespeople. Raw: 272 postings. In scope: **83 (31%)**.
   After collapsing repeated role titles: **69**. The other 69% was

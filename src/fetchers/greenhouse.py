@@ -6,8 +6,21 @@ Fetches published jobs from public boards (no auth required for GET).
 API: https://boards-api.greenhouse.io/v1/boards/{board_token}/jobs
 
 Usage:
-  python src/fetchers/greenhouse.py --boards stripe,airbnb --limit 50
-  python src/fetchers/greenhouse.py --limit 100   # prompts for board tokens
+  python src/fetchers/greenhouse.py --boards stripe,datadog          # whole boards
+  python src/fetchers/greenhouse.py --boards stripe:80,veriff        # per-board caps
+  python src/fetchers/greenhouse.py --boards stripe --limit 50       # default cap
+
+Per-board amounts, not one flat cap. Boards differ by an order of magnitude (9
+jobs to 240+), and a shared cap silently reshapes the corpus.
+
+IMPORTANT — why the default is now "fetch everything": the Greenhouse API returns
+a board's full job list in one response, in its own order, which is close to
+alphabetical by title. The old `jobs[:limit]` therefore took an ALPHABETICAL
+slice, not a sample. Measured on the first corpus: all 45 postings fetched from
+one board had titles starting with "A", as did all 10 from another. That produced
+a corpus of Account Executives and made two boards look as though they had no
+engineering roles at all. When a cap is applied now, jobs are sampled with a
+seeded RNG instead of truncated.
 """
 
 from __future__ import annotations
@@ -16,6 +29,7 @@ import argparse
 import hashlib
 import html
 import json
+import random
 import re
 import sys
 from datetime import datetime, timezone
@@ -96,8 +110,12 @@ def prompt_board_tokens() -> list[str]:
     return tokens
 
 
-def fetch_from_greenhouse(board_token: str, limit: int = 100) -> list[dict]:
-    """Fetch jobs from a public Greenhouse board (all jobs, then truncate)."""
+def fetch_from_greenhouse(board_token: str) -> list[dict]:
+    """Fetch every published job from a public Greenhouse board.
+
+    Returns the full list. Capping is a separate, explicit step (see
+    `sample_jobs`) so that the bias is visible rather than baked in here.
+    """
     params = urlencode({"content": "true"})
     url = GREENHOUSE_JOBS_URL.format(board_token=board_token) + f"?{params}"
     req = Request(url, headers={"User-Agent": "job-posting-specificity/1.0"})
@@ -119,8 +137,34 @@ def fetch_from_greenhouse(board_token: str, limit: int = 100) -> list[dict]:
         print(f"Network error fetching {board_token}: {e}", file=sys.stderr)
         return []
 
-    jobs = data.get("jobs") or []
-    return jobs[:limit]
+    return data.get("jobs") or []
+
+
+def sample_jobs(jobs: list[dict], limit: int, seed: int, token: str) -> list[dict]:
+    """Cap a board to `limit` jobs by seeded random sample, never by truncation.
+
+    `limit <= 0` means no cap. The seed is mixed with the board token so each
+    board samples independently but reproducibly.
+    """
+    if limit <= 0 or len(jobs) <= limit:
+        return jobs
+    rng = random.Random(f"{seed}:{token}")
+    picked = rng.sample(range(len(jobs)), limit)
+    return [jobs[i] for i in sorted(picked)]
+
+
+def parse_board_spec(spec: str) -> tuple[str, int | None]:
+    """'stripe:80' -> ('stripe', 80);  'stripe' -> ('stripe', None)."""
+    if ":" in spec:
+        token, _, raw = spec.partition(":")
+        token = token.strip()
+        try:
+            return token, max(0, int(raw.strip()))
+        except ValueError:
+            print(f"Warning: bad limit in {spec!r}, using the default cap",
+                  file=sys.stderr)
+            return token, None
+    return spec.strip(), None
 
 
 def _location_entries(job: dict) -> list[dict]:
@@ -214,14 +258,22 @@ def main() -> None:
     )
     parser.add_argument(
         "--boards",
-        help="Comma-separated board tokens (e.g. stripe,datadog). "
+        help="Comma-separated board tokens, each optionally with its own cap: "
+        "stripe:80,datadog:80,veriff. A token with no cap uses --limit. "
         "If omitted, you will be prompted.",
     )
     parser.add_argument(
         "--limit",
         type=int,
-        default=100,
-        help="Max jobs to keep per board (default: 100)",
+        default=0,
+        help="Default cap per board for tokens with no explicit cap. "
+        "0 (the default) means fetch the whole board.",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=7,
+        help="Seed for per-board sampling when a cap applies (default: 7)",
     )
     parser.add_argument(
         "--output-dir",
@@ -231,9 +283,10 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.boards:
-        tokens = [t.strip() for t in args.boards.split(",") if t.strip()]
+        specs = [parse_board_spec(t) for t in args.boards.split(",") if t.strip()]
     else:
-        tokens = prompt_board_tokens()
+        specs = [(t, None) for t in prompt_board_tokens()]
+    tokens = [t for t, _ in specs]
 
     if not tokens:
         print("Error: at least one board token is required.", file=sys.stderr)
@@ -243,18 +296,25 @@ def main() -> None:
     print(f"Fetching from {len(tokens)} Greenhouse board(s)...")
     total_new = 0
 
-    for token in tokens:
+    for token, board_limit in specs:
         print(f"  {token}...", end=" ", flush=True)
-        raw_jobs = fetch_from_greenhouse(token, limit=args.limit)
-        if not raw_jobs:
+        all_jobs = fetch_from_greenhouse(token)
+        if not all_jobs:
             print("0 jobs")
             continue
+        cap = args.limit if board_limit is None else board_limit
+        raw_jobs = sample_jobs(all_jobs, cap, args.seed, token)
+        how = (
+            "all"
+            if len(raw_jobs) == len(all_jobs)
+            else f"{len(raw_jobs)} sampled"
+        )
         normalized = [
             normalize_posting(job, f"greenhouse_{token}") for job in raw_jobs
         ]
         saved = save_batch(normalized, output_path)
         total_new += saved
-        print(f"{len(raw_jobs)} fetched, {saved} new")
+        print(f"{len(all_jobs)} on board, {how}, {saved} new")
 
     print(f"\nTotal new postings saved: {total_new}")
     print(f"Stored in: {output_path / 'raw_postings.jsonl'}")

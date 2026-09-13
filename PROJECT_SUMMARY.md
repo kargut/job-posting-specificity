@@ -6,7 +6,7 @@ Weekend-sized LLM pipeline: taxonomy → extract → classify → evaluate → a
 
 | Piece | Path | Status |
 |-------|------|--------|
-| Greenhouse fetcher | `src/fetchers/greenhouse.py` | Working (public boards API) |
+| Greenhouse fetcher | `src/fetchers/greenhouse.py` | Working; per-board caps, seeded sampling, whole boards by default |
 | Claim extraction prompt | `prompts/stage1_extraction.md` | Ready |
 | Classification prompt | `prompts/stage2_classification.md` | Ready |
 | Shared taxonomy | `prompts/shared_context.md` | Ready |
@@ -23,9 +23,10 @@ Weekend-sized LLM pipeline: taxonomy → extract → classify → evaluate → a
 ## Intentionally Not Built
 
 - Lever / Ashby / HN fetchers (Greenhouse is enough for v1)
-- `sumup` and `wolt` boards — dropped: sumup contributed 0 in-scope postings
-  (8 of its 10 were Italian sales roles) and wolt 1. Their rows are parked in
-  `data/raw/_dropped_boards.jsonl`.
+- (Reversed 2026-09-13) `sumup` and `wolt` were briefly dropped for contributing
+  0 and 1 in-scope postings — but that evidence was invalid: the flat `--limit 25`
+  had truncated them alphabetically to 10 and 25 of their 240 and 50 jobs. Both
+  are back, to be judged on a full fetch.
 - Span-matching F1 for Stage 1 (extraction is spot-checked by reading, not scored)
 - Inter-annotator agreement (one annotator; only intra-annotator is available)
 - Hosted UI or charts app
