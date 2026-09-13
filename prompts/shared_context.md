@@ -55,6 +55,19 @@ Could appear verbatim in an ad for a completely different job at a completely di
 
 **Test for Tier 3:** Delete the sentence. If nothing is lost, it is a slogan.
 
+> **KNOWN GAP.** Tier 1 has a mechanical test ("quote the particular"); Tier 3 has
+> only this prose test. That asymmetry showed up in the first blind labeling pass:
+> **0 of 150 claims were labeled Tier 3**, and claim shapes that were Tier 3 before
+> the Tier 1 rule existed now land in Tier 1 or 2. `Excellent written and verbal
+> communication skills in English` became Tier 1 on the quoted token `English` —
+> a named language, not a particular about *this* job.
+>
+> Until Tier 3 gets a symmetric mechanical test, treat these as **non-particulars**
+> that must NOT lift a claim out of Tier 3: the employer's own name; `English` or
+> another language nearly every posting requires; bare skill nouns
+> (`communication skills`, `problem-solving`). A quotable token only counts when it
+> is specific to this job.
+
 **Test for Tier 1 vs Tier 2:** Could a candidate be disappointed in a provable way?
 
 ---

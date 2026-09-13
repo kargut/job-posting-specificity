@@ -40,6 +40,8 @@ No `.env` or stored API keys. Greenhouse public boards need no auth; pass `--boa
 - **Tier 1 (Concrete):** Number, named tech, timeframe, or falsifiable commitment (`€60k`, `Go + PostgreSQL`, `team of nine`)
 - **Tier 2 (General direction):** Real intent, unspecific (`We invest in developer growth`, `modern stack`)
 - **Tier 3 (Empty slogan):** Generic filler (`fast-paced`, `we're like a family`)
+  — defined in the taxonomy but **never observed in the labeled set**; see
+  Evaluation below
 
 **The Tier 1 test** is mechanical, because it has to be: *quote the particular.*
 A claim is Tier 1 only if you can point at a number, a named technology, a named
@@ -103,6 +105,37 @@ against the drifted pass, it flags 34 errors. Per-claim diff:
 `predicted_tier`: comparing hand labels to hand labels measures annotator
 agreement at best, and nothing at all when the two files share a lineage.
 
+### Labeled set
+
+| Tier | Claims | Share |
+|---|---|---|
+| 1 — Concrete | 61 | 41% |
+| 2 — General direction | 89 | 59% |
+| 3 — Empty slogan | **0** | **0%** |
+
+150 claims across 15 postings, labeled blind. Overall specificity 0.407;
+per-posting 0.00–0.90, median 0.30.
+
+**Tier 3 was never observed, and that is the most useful thing this evaluation
+found.** Two causes, both upstream of the number:
+
+1. **Stage 1 suppresses slogans.** 17 of 745 extracted claims (2.3%) match slogan
+   patterns; 4 reached the sample. The postings are full of "we're on a mission
+   to…" language — the extractor drops it as atmosphere, so it never reaches the
+   annotator. A Stage 1 error is invisible to a Stage 2 metric.
+2. **The Tier 1 rule destabilised the Tier 2/3 boundary.** Tier 1 got a mechanical
+   test ("quote the particular"); Tier 3 was left to prose. Claim shapes that the
+   earlier gold posting labeled Tier 3 now land in Tier 1 or 2 — `Excellent
+   written and verbal communication skills in English` became Tier 1 on the quoted
+   token `English`, which is a named language, not a particular about *this* job.
+
+So the reported 0.407 is inflated twice over: Tier 3 is missing from the
+denominator, and Tier 1 admits a false-positive class. On this corpus the metric
+is in practice `tier_1 / (tier_1 + tier_2)`. Comparisons between postings still
+hold, since both biases apply uniformly; absolute scores should not be read as
+measurements of slogan content. Detail and the two-part fix: `eval/RESULTS.md`
+section 5.
+
 ### Model agreement
 
 _Not yet measured. Numbers go here once Stage 2 has been run against the blind
@@ -111,7 +144,7 @@ post-rule annotator self-agreement, not on its own._
 
 | Measure | Value |
 |---|---|
-| Claims in eval set | — |
+| Claims in eval set | 150 |
 | Tier 1 / Other boundary accuracy | — |
 | Tier 1 precision | — |
 | Cost per 1,000 postings | — |

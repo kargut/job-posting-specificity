@@ -41,6 +41,15 @@ Weekend-sized LLM pipeline: taxonomy → extract → classify → evaluate → a
 - Rollups by sector — every board in the corpus is a software/fintech employer, so
   the rollup has one real bucket. What the code separates is *department*.
 
+## Known Limits of This Release
+
+- **Tier 3 is defined but never observed** — 0 of 150 labeled claims. Stage 1
+  suppresses company slogans (2.3% of extracted claims are slogan-ish), and the
+  mechanical Tier 1 rule lets generic requirements escape Tier 3 on uninformative
+  tokens. The score is in practice `tier_1 / (tier_1 + tier_2)` on this corpus.
+  Shipped as a documented finding rather than fixed; the fix is a Stage 1 prompt
+  change, a re-run and a re-label. See `eval/RESULTS.md` section 5.
+
 ## Design Choices
 
 1. **Three stages** — evaluate and swap models independently.

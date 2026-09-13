@@ -12,6 +12,16 @@
 
 1. **Read the posting end to end.** Identify every claim (assertion).
 
+> **KNOWN DEFECT, not yet fixed.** This prompt currently drops company mission and
+> culture statements — "we're on a mission to make money work for everyone", "a
+> large-scale technology company with a soul" — as atmosphere. They are not
+> boilerplate: they are Tier 3 claims, and dropping them removes Tier 3 from the
+> denominator, inflating every specificity score. Measured: 17 of 745 extracted
+> claims (2.3%) are slogan-ish, and **0 of 150 labeled claims came out Tier 3**.
+> To fix, add mission/culture/values statements as claims to extract while still
+> dropping legal and application boilerplate, then re-run Stage 1 and re-label.
+> See `eval/RESULTS.md` section 5.
+
 2. **Drop boilerplate.** Do NOT score:
    - Equal-opportunity statements ("We are an equal-opportunity employer")
    - Application instructions ("Apply via our website")
