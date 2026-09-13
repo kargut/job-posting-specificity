@@ -16,6 +16,13 @@ like emitting. Two failure modes are silent and both are fatal downstream:
      comment. This script checks every claim text against the posting it came
      from and refuses the batch if spans are not verbatim.
 
+  3. INVENTED context_section NAMES. Stage 3 partitions claims into role context
+     and employer context on this field. A name outside the closed list ("Tech"
+     for "Tech stack") is not an error anywhere downstream -- aggregate.py just
+     files the claim under employer context and the role-context score moves for
+     a reason nobody can see. This script refuses the batch if any claim carries
+     a section name that is not in the closed list.
+
 Usage:
   python eval/ingest_extraction.py out.json              # validate only (dry run)
   python eval/ingest_extraction.py out.json --append     # validate, then write
@@ -28,6 +35,7 @@ redone after fixing a prompt without duplicating rows.
 from __future__ import annotations
 
 import argparse
+import difflib
 import json
 import re
 import sys
@@ -36,6 +44,15 @@ from pathlib import Path
 RAW = Path("data/raw/raw_postings.jsonl")
 OUT = Path("data/extracted/claims.jsonl")
 SAMPLE = Path("eval/batches/sample_ids.txt")
+
+# Closed list from prompts/stage1_extraction.md. Keep the two in sync: the prompt
+# is what the model reads, this is what refuses the batch when it improvises.
+EMPLOYER_SECTIONS = ("Company", "Company programs", "Culture/values")
+ROLE_SECTIONS = ("Role", "Team", "Responsibilities", "Requirements",
+                 "Preferred qualifications", "Tech stack", "Product scope",
+                 "Compensation", "Benefits", "Location/schedule", "Level",
+                 "Reporting line", "Hiring process")
+CONTEXT_SECTIONS = frozenset(EMPLOYER_SECTIONS + ROLE_SECTIONS)
 
 
 def norm(s: str) -> str:
@@ -143,18 +160,22 @@ def main() -> None:
             continue
 
         body = norm(raw[pid]["content"])
-        bad_spans, missing_fields = [], 0
+        bad_spans, bad_sections, missing_fields = [], [], 0
         for c in claims:
             if not c.get("claim_id") or not (c.get("text") or "").strip():
                 missing_fields += 1
                 continue
             if norm(c["text"]) not in body:
                 bad_spans.append(c["text"])
+            section = (c.get("context_section") or "").strip()
+            if section not in CONTEXT_SECTIONS:
+                bad_sections.append((c["claim_id"], section))
 
         verbatim = len(claims) - len(bad_spans) - missing_fields
-        status = "ok " if not bad_spans and not missing_fields else "BAD"
+        ok_sections = len(claims) - len(bad_sections) - missing_fields
+        status = "ok " if not (bad_spans or bad_sections or missing_fields) else "BAD"
         print(f"  {status} {pid[:44]:44s} {len(claims):3d} claims, "
-              f"{verbatim} verbatim")
+              f"{verbatim} verbatim, {ok_sections} sections in list")
         if missing_fields:
             errors.append(f"{pid}: {missing_fields} claim(s) missing claim_id or text")
         if bad_spans:
@@ -163,7 +184,16 @@ def main() -> None:
                 print(f"        not found: {t[:88]}")
             if len(bad_spans) > 4:
                 print(f"        ... and {len(bad_spans) - 4} more")
-        if not bad_spans and not missing_fields:
+        if bad_sections:
+            errors.append(f"{pid}: {len(bad_sections)} claim(s) with a context_section "
+                          f"outside the closed list")
+            for cid, section in bad_sections[:4]:
+                near = difflib.get_close_matches(section, CONTEXT_SECTIONS, n=1, cutoff=0.4)
+                hint = f' -- did you mean "{near[0]}"?' if near else ""
+                print(f'        {cid}: "{section or "(empty)"}" not in the closed list{hint}')
+            if len(bad_sections) > 4:
+                print(f"        ... and {len(bad_sections) - 4} more")
+        if not bad_spans and not bad_sections and not missing_fields:
             good.append({"posting_id": pid,
                          "title": raw[pid].get("title", ""),
                          "company": raw[pid].get("company", ""),
@@ -178,8 +208,9 @@ def main() -> None:
         print(f"  ERROR:   {e}")
 
     if errors and not args.force:
-        print("\nNothing written. Fix the spans (they must be copied verbatim from "
-              "the posting, typos included) and re-run, or pass --force.")
+        print("\nNothing written. Fix the spans (copied verbatim from the posting, "
+              "typos included) and the context_section values (closed list in "
+              "prompts/stage1_extraction.md), then re-run, or pass --force.")
         sys.exit(1)
 
     if not args.append:

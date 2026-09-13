@@ -168,15 +168,15 @@ We are an equal-opportunity employer. To apply, visit our careers page.
     {"claim_id": "1", "text": "30-person startup", "context_section": "Company"},
     {"claim_id": "2", "text": "API infrastructure", "context_section": "Company"},
     {"claim_id": "3", "text": "Founded 2019", "context_section": "Company"},
-    {"claim_id": "4", "text": "Based in Tallinn", "context_section": "Location"},
-    {"claim_id": "5", "text": "offices in London", "context_section": "Location"},
-    {"claim_id": "6", "text": "remote roles", "context_section": "Location"},
+    {"claim_id": "4", "text": "Based in Tallinn", "context_section": "Location/schedule"},
+    {"claim_id": "5", "text": "offices in London", "context_section": "Location/schedule"},
+    {"claim_id": "6", "text": "remote roles", "context_section": "Location/schedule"},
     {"claim_id": "7", "text": "5+ years of experience", "context_section": "Requirements"},
-    {"claim_id": "8", "text": "microservices in Go and Rust", "context_section": "Tech"},
+    {"claim_id": "8", "text": "microservices in Go and Rust", "context_section": "Tech stack"},
     {"claim_id": "9", "text": "€65,000–85,000 gross", "context_section": "Compensation"},
     {"claim_id": "10", "text": "annual bonus 10–20%", "context_section": "Compensation"},
-    {"claim_id": "11", "text": "four-day week", "context_section": "Schedule"},
-    {"claim_id": "12", "text": "ownership over your services' roadmap", "context_section": "Responsibility"}
+    {"claim_id": "11", "text": "four-day week", "context_section": "Location/schedule"},
+    {"claim_id": "12", "text": "ownership over your services' roadmap", "context_section": "Responsibilities"}
   ]
 }
 ```
