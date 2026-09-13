@@ -32,6 +32,12 @@ well as `predicted_tier`, so treat pass 1 as gold and pass 2 as predictions:
 
 Keys while labeling: 1 2 3 = tier, s = skip, b = back, ? = rule, q = save & quit.
 
+In Git Bash / MinTTY, Python is handed a pipe rather than a Windows console, so
+single keypresses cannot be read and a console-based reader would hang. That is
+detected automatically and the labeler switches to typed-line input (press the
+key, then Enter). `--line-input` forces it; PowerShell, cmd, or `winpty python
+...` give real single-key input.
+
 Test cases below are paraphrased from real postings: this repo commits code and
 aggregates only, and never names an individual company.
 """
@@ -214,19 +220,57 @@ def write_jsonl_atomic(path: Path, rows: list[dict]) -> None:
     os.replace(tmp, path)
 
 
-def getch() -> str:
-    """One keypress, no Enter. Falls back to line input where unavailable."""
+LINE_INPUT = False  # set from --line-input or auto-detected in main()
+
+
+def _stdin_is_console() -> bool:
+    """True only when stdin is a real terminal this process can read keys from.
+
+    Git Bash / MinTTY is the trap: it is a terminal to the user but hands Python
+    a PIPE, not a Windows console. `msvcrt.getwch()` then blocks forever on a
+    console handle that was never connected -- no prompt, no echo, and Ctrl+C
+    cannot always interrupt it. `isatty()` is False there, which is exactly the
+    signal we need, so check it BEFORE reaching for msvcrt.
+    """
     try:
-        import msvcrt  # Windows
+        return bool(sys.stdin.isatty())
+    except Exception:
+        return False
+
+
+def input_mode() -> str:
+    if LINE_INPUT or not _stdin_is_console():
+        return "line"
+    return "key"
+
+
+def getch() -> str:
+    """One keypress where the terminal allows it; otherwise one typed line.
+
+    In line mode the user types the key and presses Enter -- same keys, one extra
+    keystroke. Never blocks on a console handle that does not exist.
+    """
+    if input_mode() == "line":
+        try:
+            line = sys.stdin.readline()
+        except (KeyboardInterrupt, EOFError):
+            return "q"
+        if not line:
+            return "q"
+        return line.strip()[:1] or "\r"
+
+    try:
+        import msvcrt  # Windows, real console
         ch = msvcrt.getwch()
+        if ch == "\x03":
+            raise KeyboardInterrupt
         return "\r" if ch in "\r\n" else ch
     except ImportError:
         pass
+
     try:
         import termios
         import tty
-        if not sys.stdin.isatty():
-            raise OSError
         fd = sys.stdin.fileno()
         old = termios.tcgetattr(fd)
         try:
@@ -239,9 +283,7 @@ def getch() -> str:
         return ch
     except Exception:
         line = sys.stdin.readline()
-        if not line:
-            return "q"
-        return line.strip()[:1] or "\r"
+        return "q" if not line else (line.strip()[:1] or "\r")
 
 
 def width() -> int:
@@ -402,6 +444,11 @@ def label_session(args: argparse.Namespace) -> int:
                    f"been discarded — they are never shown.", "  * "))
     print(wrap(f"{len(todo)} claims to label "
                f"({len(queue)} sampled, {len(queue) - len(todo)} already done).", "  "))
+    if input_mode() == "line":
+        print(wrap("Input mode: TYPE THE KEY THEN PRESS ENTER. This terminal "
+                   "(Git Bash / MinTTY, or piped input) does not give Python a "
+                   "console to read single keypresses from. For single-key mode, "
+                   "run in PowerShell or cmd, or prefix with `winpty`.", "  * "))
     print(wrap("Keys: 1 2 3 = tier · s = skip · b = back · ? = rule · q = save & quit", "  "))
     print(rule("="))
 
@@ -688,10 +735,17 @@ def main() -> None:
     p.add_argument("--shuffle", action="store_true")
     p.add_argument("--relabel", action="store_true")
     p.add_argument("--limit", type=int, default=0)
+    p.add_argument("--line-input", action="store_true",
+                   help="type the key then Enter, instead of single keypresses. "
+                        "Auto-enabled when the terminal cannot supply keypresses "
+                        "(Git Bash / MinTTY).")
     p.add_argument("--rule", action="store_true", help="print the tier rule and exit")
     p.add_argument("--selftest", action="store_true",
                    help="run the quote-rule test cases and exit")
     args = p.parse_args()
+
+    global LINE_INPUT
+    LINE_INPUT = args.line_input
 
     if args.rule:
         print(RULE_TEXT)
