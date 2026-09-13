@@ -97,7 +97,7 @@ Output from Stage 1 (extraction). Model-predicted claims per posting.
 ```json
 {
   "posting_id": "greenhouse_token_12345",
-  "model": "claude-3.5-sonnet",
+  "model": "claude-opus-5",
   "extraction_prompt_version": "1.0",
   "claims": [
     {
@@ -121,7 +121,7 @@ Output from Stage 2 (classification). Tiers assigned to extracted claims.
 ```json
 {
   "posting_id": "greenhouse_token_12345",
-  "model": "claude-3.5-sonnet",
+  "model": "claude-opus-5",
   "classification_prompt_version": "1.0",
   "claims": [
     {
@@ -135,6 +135,12 @@ Output from Stage 2 (classification). Tiers assigned to extracted claims.
   "classified_at": "2026-09-10T15:30:00Z"
 }
 ```
+
+**On the `model` field:** when a stage is run through a chat interface, this
+records the identifier that interface was configured with, **not a verified
+measurement of the serving model** — the model actually serving a turn can differ
+and a chat session gives no way to check. Only an instrumented API run can attest
+to a version. See `eval/RESULTS.md` section 6.
 
 Acceptable alternate key: `classifications` instead of `claims` (same object shape). `eval/compare_labels.py` and `src/pipeline/aggregate.py` accept either.
 
@@ -201,7 +207,7 @@ Final evaluation report (human vs model agreement).
 - Confusion matrix: [...]
 
 ## Cost & Latency
-- Model: Claude 3.5 Sonnet
+- Model: claude-opus-5 (chat-configured identifier; see RESULTS.md section 6)
 - Cost per 1,000 postings: €2.14
 - Tokens per posting (avg): extraction 450, classification 320, total 770
 - Wall-clock time per posting: 2.3s

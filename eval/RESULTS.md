@@ -87,29 +87,74 @@ accepting the default, and the 61 Tier 1 claims carry 54 distinct quoted spans.
 Particular types cited: named tech 27, number 10, unlabeled 9, credential 9,
 named place 6.
 
-## 3. Per-Claim Agreement
+## 3. Per-Claim Agreement **[MEASURED]**
 
-> **Tier 3 metrics are not reportable on this corpus.** No claim in the labeled
-> set is Tier 3 (see section 5), so Tier 3 precision, recall and F1 are undefined
-> and the three-class confusion matrix has an empty row. Per-tier figures below
-> cover Tiers 1 and 2 only.
+150 gold claims, all 150 paired (zero text drift between Stage 1 and Stage 2).
 
-- Overall accuracy: —
-- 95% CI: —
-- Tier 1 precision / recall / F1: —
-- Tier 2 precision / recall / F1: —
-- Tier 3 precision / recall / F1: **n/a — no Tier 3 in the gold set**
+- Exact-tier accuracy: **76.7%** — 95% CI [69, 83]
 
-## 4. Tier 1 / Other Boundary
+| Tier | Precision | Recall | F1 | Gold support |
+|---|---|---|---|---|
+| 1 — Concrete | 0.902 | 0.754 | 0.821 | 61 |
+| 2 — General direction | 0.831 | 0.775 | 0.802 | 89 |
+| 3 — Empty slogan | 0.000 | n/a | n/a | **0** |
 
-(The only distinction the specificity score depends on)
+> **Tier 3 precision of 0.000 is an artifact, not a result.** The model predicted
+> Tier 3 sixteen times; the gold set contains none, so precision is 0/16 and
+> recall is undefined. It measures the absence of Tier 3 in the labels, not the
+> model's ability to find slogans. See section 5 and section 7.
 
-- Accuracy: — (target: above 80% **and** above annotator self-agreement)
-- Tier 1 precision: — (target ≥ 0.85)
-- Tier 1 recall: —
-- F1: —
-- 95% CI on accuracy: —
-- Confusion matrix: —
+### Confusion matrix (gold → predicted)
+
+| | →1 | →2 | →3 |
+|---|---|---|---|
+| **gold 1** | 46 | 14 | 1 |
+| **gold 2** | 5 | 69 | 15 |
+| **gold 3** | 0 | 0 | 0 |
+
+### Score comparison
+
+| | Tier 1 | Tier 2 | Tier 3 | Specificity |
+|---|---|---|---|---|
+| Human gold | 61 | 89 | 0 | **0.407** |
+| Model | 51 | 83 | 16 | **0.340** |
+
+The model scores this corpus **lower** than the annotator did. It is more
+conservative about Tier 1 and willing to use Tier 3, both of which push the ratio
+down. Given the two structural biases in section 5 — which both inflate the human
+figure — the model's 0.340 is arguably the better estimate of the two.
+
+## 4. Tier 1 / Other Boundary **[MEASURED]**
+
+The only distinction the specificity score depends on.
+
+| Measure | Value |
+|---|---|
+| Accuracy | **86.7%** |
+| 95% CI | **[80, 91]** |
+| Tier 1 precision | 0.902 |
+| Tier 1 recall | 0.754 |
+| F1 | 0.821 |
+| Claim pairs | 150 |
+
+**Read against the noise floor, not against zero.** The annotator's own pre-rule
+self-agreement on this boundary was 80.6% (section 1). The model sits **+6.1pp**
+above that — but the CI lower bound is 80, which lands exactly on the floor. The
+honest statement is: *the classifier is at least as consistent as the annotator,
+and probably better, but 150 claims cannot establish by how much.*
+
+Quality gates, both cleared:
+
+- Tier 1 boundary accuracy ≥ 80% — **PASS** (86.7%)
+- Tier 1 precision ≥ 0.85 — **PASS** (0.902)
+
+Recall of 0.754 is the weaker half: the model declines Tier 1 on a quarter of the
+claims the annotator accepted. Section 7 shows that on several of those the model
+is defensibly right, so this understates it.
+
+**A smoke test on the first 4 postings gave 92.5% on the same boundary.** The full
+15 gave 86.7%. A 40-claim slice was optimistic by ~6pp — worth remembering before
+quoting any partial run.
 
 ## 5. Extraction Spot-Check (qualitative) **[MEASURED]**
 
@@ -241,70 +286,171 @@ Labels were **not** retro-edited after this analysis. Changing blind labels once
 the pattern is visible is the same anchoring failure the protocol exists to
 prevent; the finding is documented instead.
 
-## 6. Cost & Latency
+## 6. Cost & Latency **[ESTIMATED — read the caveats]**
 
-- Model: —
-- Cost per 1,000 postings: —
-- Tokens per posting (avg): extraction —, classification —
-- Wall-clock time per posting: —
+### Which model produced these tiers
 
-## 7. Disagreements
+`data/classified/claims.jsonl` records `"model": "claude-opus-5"` on every row.
+**That is a label, not a measurement.** Stage 2 was run through a chat interface
+configured with that identifier; the model actually serving any given turn can
+differ, and a chat session gives no way to verify it. Treat the version as
+approximate provenance. An instrumented API run is the only way to attest to it.
 
-Hand-picked cases where human and model disagreed. Note explicitly where the
-**model was right and the human wrong** — after section 1, that is a live
-possibility and saying so is part of the point.
+### Token estimate
 
-_To fill in after Stage 2._
+Stage 1 and Stage 2 were both run by pasting into a chat, so no token counts were
+captured. The figures below are **derived from character counts of the actual
+files on disk** — exact and reproducible — converted at a 4-chars-per-token rule
+of thumb. JSON tokenises worse than prose, so treat the token numbers as ±25%.
 
-### Pre-registered: labels already suspected wrong, before Stage 2 ran
+| Stage 2 input | Chars | ≈ Tokens |
+|---|---|---|
+| Prompt + shared context, re-sent per batch (×4) | 94,240 | 23,560 |
+| Claim batches (4 files) | 29,361 | 7,340 |
+| **Total input** | **123,601** | **~30,900** |
+| **Total output** | **44,331** | **~11,100** |
 
-Recorded **before** any model output existed, so that if the classifier disagrees
-on these the analysis cannot be accused of deciding after the fact that the model
-was right. They are left in the gold set unchanged — editing blind labels once a
-pattern is visible is the anchoring failure the protocol exists to prevent.
+Per posting: **~2,060 input / ~740 output tokens**.
+Per 1,000 postings: **~2.06M input / ~0.74M output tokens**.
 
-**A. Tier 1 on the employer's own name (4 claims, one posting pair).**
-All four justify Tier 1 by quoting `Stripe` in a posting *by* Stripe. A company
-naming itself is not a checkable particular about the job on offer.
+Cost per 1,000 postings = `2.06 × input_rate + 0.74 × output_rate` (rates per
+million tokens, taken from the vendor's current price list at time of writing —
+deliberately not hard-coded here, because published rates change and a stale
+number in a README is worse than an arithmetic instruction).
 
-| Claim | Verdict |
+### The finding: 76% of input tokens are prompt, not data
+
+Of ~2,060 input tokens per posting, roughly **1,570 are the prompt** re-sent with
+each batch and only ~490 are the claims being classified. At four postings per
+batch the taxonomy is paid for four times over.
+
+Batching ten postings instead of four drops prompt overhead from ~1,570 to ~590
+tokens per posting — **input cost falls by about 48%** with no change to the
+prompt or the model. For a chat-driven pipeline, batch size is the single largest
+cost lever.
+
+### Wall clock
+
+| Measure | Value |
 |---|---|
-| "Millions of companies—from the world's largest enterprises to the most ambitious startups—use Stripe to accept payments, grow their revenue, and accelerate new business opportunities" | **Likely wrong.** Marketing scale language; "millions" is not a falsifiable commitment about the role |
-| "Stripe Terminal helps Stripe users extend their online presence into the physical world" | **Defensible.** `Stripe Terminal` is a named product — a real particular about what you would work on |
-| "The Terminal team's mission is to make it as easy for businesses to accept in-person payments as the Stripe API has done for online payments" | **Borderline.** Names `Stripe API` and the team, but the sentence is a mission statement |
-| "Share research insights that deepen Stripe's understanding of user needs" | **Likely wrong.** Commits to nothing checkable; the quoted token is just the employer |
+| Operator cycle time per batch (paste → wait → save → ingest) | 28, 10, 8 min |
+| Model response, batch 1 only, by stopwatch | ~2 min |
+| **Inference latency per posting** | **not instrumented** |
 
-If the classifier puts the first and fourth in Tier 2, that is the model being
-right and the annotator wrong, and should be reported as such.
+The batch times come from output-file timestamps and are **operator cycle time**,
+not inference latency — they include reading, saving and ingesting. The 28 → 10 →
+8 trend is the operator learning the loop, not the model speeding up.
 
-**B. Tier 1 on `English` (2 claims).**
-`Proficient in both spoken and written English.` and `Excellent written and
-verbal communication skills in English` were both labeled Tier 1 with
-`credential: "English"`. English is a named language, but essentially every
-posting in an English-only corpus requires it, so it separates nothing. This is
-the false-positive class described in section 5.
+**Inference latency is not reported because a chat-driven pipeline cannot measure
+it.** Response time in a chat UI includes queueing and streaming and cannot be
+separated from them. A single stopwatch reading of ~2 minutes for 4 postings (~30
+s/posting) is recorded only as an order of magnitude. Quoting a per-posting
+latency from this setup would be a fabricated number, so none is quoted.
 
-**C. A slogan labeled Tier 2 (1 claim).**
-`on a mission to empower small businesses across the globe` was labeled Tier 2
-("no number"). By the deletion test it is Tier 3 — it could appear verbatim in an
-ad for a different job at a different company. One of only four slogan-shaped
-claims that reached the sample at all, which is why section 5 treats the Tier 3
-absence as both an extraction and a taxonomy problem.
+### What would close this properly
 
-**Net effect.** Items A and B both inflate Tier 1; item C removes the single
-clearest Tier 3 candidate. All three push the reported 0.407 in the same
-direction — upward — which is consistent with the two structural biases in
-section 5. Seven suspect labels out of 150 is roughly 4.7%, well inside the
-annotator's own measured inconsistency of ~19% on exact tier.
+A 20-claim instrumented API run returns exact token counts and real latency in
+well under an hour. It was not done here because the project's scope forbids
+stored credentials — a deliberate trade, recorded rather than hidden.
+
+## 7. Disagreements **[MEASURED]**
+
+23 of 150 claims disagree. They are not randomly distributed — they cluster on the
+two boundaries section 5 predicted would be weak.
+
+### The pre-registration paid off
+
+Seven labels were recorded as suspect in this section **before Stage 2 was run**,
+so that a later disagreement could not be explained away after the fact. The model
+disagreed on **4 of the 7**, and all four are the group flagged as "likely wrong":
+
+| Pre-registered claim | Human | Model | Called it? |
+|---|---|---|---|
+| "Millions of companies—from the world's largest enterprises…use Stripe…" | 1 | **2** | Yes — flagged *likely wrong* |
+| "Stripe Terminal helps Stripe users extend their online presence…" | 1 | **2** | Yes — flagged *defensible*, model disagrees anyway |
+| "The Terminal team's mission is to make it as easy for businesses…" | 1 | **2** | Yes — flagged *borderline* |
+| "Share research insights that deepen Stripe's understanding of user needs" | 1 | **3** | Yes — flagged *likely wrong*; model went further, to Tier 3 |
+| "Proficient in both spoken and written English." | 1 | 1 | No — model agreed with the human |
+| "Excellent written and verbal communication skills in English" | 1 | 1 | No — model agreed |
+| "on a mission to empower small businesses across the globe" | 2 | 2 | No — model agreed |
+
+**Every claim justified by quoting the employer's own name was downgraded by the
+model.** That confirms the false-positive class named in section 5 and, on these
+four, the model is right and the annotator wrong.
+
+**The `English` predictions were wrong, and they were mine.** Both were flagged as
+suspect Tier 1s; the model independently agreed with the human. So did the slogan
+call. Three of seven pre-registrations did not survive contact — recorded here
+because a pre-registration you only report when it wins is worthless.
+
+### Where the model is right and the human is wrong
+
+**Tier 1 the annotator missed (gold 2 → model 1, 5 claims).** Each quotes a real,
+auditable particular:
+
+```
+"more than 425 local government election websites in 33 states"   two auditable counts
+"connections to over 350 platforms businesses use everyday"       a counted surface
+"one of our local offices around the globe, from New York to Bangkok"  named offices
+"named to Entrepreneur Magazine's Top Company Cultures list"      a named publication
+"A basic understanding of SQL and Data / BI tools"                a named query language
+```
+
+These are Tier 1 by the written rule and were labeled Tier 2. The annotator's
+Tier 1 errors therefore run in **both** directions, not just the permissive one.
+
+**Tier 3 the annotator never used (gold 2 → model 3, 15 claims; gold 1 → 3, 1).**
+The model applied the deletion test the taxonomy defines and the annotator stopped
+applying:
+
+```
+"You can balance strategy and execution, translating ambitious goals into tangible outcomes"
+   model: "balance strategy and execution" would read identically in an ad for a different job
+"comfortable making decisions in environments where there is rarely a perfect answer"
+   model: removing the line costs the reader nothing
+"can navigate ambiguity and create clarity where goals…are not yet defined"
+   model: delete it and nothing is lost
+```
+
+16 Tier 3 predictions against 0 in gold settles the section 5 question: **Tier 3
+was reachable from this taxonomy — the annotator's boundary had moved.** The
+mechanical Tier 1 rule pulled claims up out of Tier 3 and nothing pulled them
+back down.
+
+### Where the human is probably right
+
+**Gold 1 → model 2, 14 claims.** Several are the model over-applying its own
+escape-hatch reasoning to qualified technology mentions:
+
+```
+"primarily in Swift"   model: "primarily" qualifies the named language
+```
+
+`Swift` is a named technology and the hedge is about proportion of time, not about
+whether Swift is used. The written rule says a hedge on a *list of named things*
+does not dissolve it. Here the annotator followed the rule and the model did not.
+
+### What this changes
+
+Nothing in the gold set. Labels were not edited after seeing model output — that
+is the anchoring failure the whole protocol exists to prevent. The conclusion is
+about the **taxonomy**, not the labels: Tier 1 needs a non-particulars exclusion
+list and Tier 3 needs a mechanical test, both already written up in section 5 as
+the deferred fix.
 
 ## Quality Gates
 
-- [ ] Tier 1 boundary accuracy ≥ 80%
-- [ ] Tier 1 boundary accuracy above annotator self-agreement
-- [ ] Tier 1 precision ≥ 0.85
-- [ ] Annotator self-agreement re-measured after the written rule
-- [x] Extraction spot-checked against the source (section 5)
-- [ ] Tier 3 observable at all — **FAILS on this corpus (0 of 150)**; scored as a
-      two-tier metric, see section 5
-- [ ] Cost per 1,000 postings measured
-- [ ] Latency per posting measured
+| Gate | Status |
+|---|---|
+| Tier 1 boundary accuracy ≥ 80% | **PASS** — 86.7%, 95% CI [80, 91] |
+| Tier 1 boundary above annotator self-agreement | **PASS, narrowly** — +6.1pp over the 80.6% floor, but the CI lower bound sits on it |
+| Tier 1 precision ≥ 0.85 | **PASS** — 0.902 |
+| Extraction spot-checked against the source | **PASS** — section 5 |
+| Cost per 1,000 postings | **ESTIMATED** — from character counts, method and ±25% stated (section 6) |
+| Latency per posting | **NOT MEASURABLE** from a chat-driven pipeline; needs an instrumented API run (section 6) |
+| Tier 3 observable at all | **FAIL** — 0 of 150 gold claims; scored as a two-tier metric (sections 5, 7) |
+| Annotator self-agreement re-measured after the written rule | **NOT DONE** — 30-claim blind re-label, needs a day's gap |
+
+Two gates are unmet and neither is hidden: latency cannot be obtained from this
+setup, and Tier 3 never appeared in the labels. Both have a stated cause and a
+stated fix.
