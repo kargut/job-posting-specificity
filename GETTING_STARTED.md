@@ -53,9 +53,30 @@ eval set covers. `--all-roles` and `--keep-duplicate-titles` disable filters 1
 and 2 if you need to inspect what they remove.
 
 Then, per batch, paste `prompts/stage1_extraction.md` followed by
-`eval/batches/batchN.txt` into Claude, Cursor, Gemini, etc.
+`eval/batches/batchN.txt` into Claude, Cursor, Gemini, etc. Save the reply to a
+file and ingest it — do not hand-edit JSON into the corpus:
 
-- Output: append JSON lines to `data/extracted/claims.jsonl`
+```bash
+python eval/ingest_extraction.py out.json            # validate (dry run)
+python eval/ingest_extraction.py out.json --append   # validate, then write
+```
+
+`ingest_extraction.py` exists because both ways this step fails are silent:
+
+- **Pretty-printed JSON.** Everything downstream parses one object per *line*, so
+  a multi-line object reads as zero rows and every metric comes back empty with no
+  error. The script flattens an object, an array, concatenated objects, or a
+  ` ```json ` fenced block.
+- **Tidied spans.** Claims are paired with hand labels by exact normalized text,
+  so a paraphrased or typo-corrected span can never be matched and vanishes from
+  the evaluation without comment. Every claim is checked against its posting and
+  the batch is refused if any span is not verbatim.
+
+It also rejects a `posting_id` that is not in the corpus, warns if one is outside
+the sample, replaces rather than duplicates a re-ingested posting, and prints
+progress towards 15.
+
+- Output: `data/extracted/claims.jsonl`, one posting per line
 
 ### Why extraction comes first
 

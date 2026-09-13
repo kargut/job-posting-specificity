@@ -19,7 +19,10 @@ Stage 1 extracted. See `GETTING_STARTED.md` sections 3-5.
 
 1. Paste the stage prompt  
 2. Paste 5–10 postings (or, for Stage 2, the extracted claims)  
-3. Copy JSON → append **one object per line** to the matching `*.jsonl`.
+3. For Stage 1, save the reply to a file and run
+   `python eval/ingest_extraction.py out.json --append` — it flattens the JSON and
+   refuses spans that are not verbatim. For Stage 2, append **one object per
+   line** to the matching `*.jsonl`.
    Flatten pretty-printed output first — `compare_labels.py` and
    `aggregate.py` parse line by line, and a multi-line object reads as zero
    rows with no error:

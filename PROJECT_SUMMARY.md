@@ -16,6 +16,7 @@ Weekend-sized LLM pipeline: taxonomy → extract → classify → evaluate → a
 | Annotator consistency measurement | `eval/annotator_passes.md` | Measured: 75.0% exact / 80.6% boundary self-agreement |
 | Blind labeler CLI | `eval/label_claims.py` | Working (stdlib; `--selftest`, `--verify`) |
 | Corpus scope filter | `src/pipeline/role_filter.py` | Working (English + software/adjacent) |
+| Stage 1 ingest + validator | `eval/ingest_extraction.py` | Working (flattens JSON, enforces verbatim spans) |
 | Eval sample + batch builder | `eval/make_batches.py` | Working (scope + dedupe + balanced, seeded) |
 | Eval report | `eval/RESULTS.md` | Annotator section measured; model sections empty |
 | Data schema | `data/schema.md` | Reference |
