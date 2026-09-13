@@ -176,6 +176,7 @@ results/**
 eval/labeled*.jsonl
 eval/_to_delete/
 eval/batches/
+eval/stage2_batches/
 
 # Eval scratch
 eval/temp_*.json
