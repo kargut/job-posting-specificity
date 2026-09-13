@@ -181,6 +181,8 @@ eval/stage2_batches/
 # Eval scratch
 eval/temp_*.json
 eval/disagreements.md
+# Stage 2 model output: carries claim text lifted from real postings.
+eval/stage2_out_*.json
 
 # Spyder project settings
 .spyderproject
