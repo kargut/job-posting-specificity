@@ -50,17 +50,56 @@ def claim_tier(claim: dict) -> int | None:
     return int(tier) if tier in (1, 2, 3) else None
 
 
+# Seniority is read from the TITLE. The body is consulted only as a fallback, and
+# only for an explicit years-of-experience figure.
+#
+# Why: the original rule searched title + body for "senior|lead|principal|staff"
+# and checked it first. Bodies run ~5,000 characters and the words turn up in
+# boilerplate constantly -- "you will lead incident response", "lead the
+# development of new detection logic". Measured over 782 in-scope postings, 268
+# (34%) were labelled senior with no seniority word in the title at all, giving
+# senior 644 / mid 1. A bucket that fires once in 782 is a bug, not a finding.
+TITLE_SENIOR = re.compile(
+    r"\b(principal|staff|senior|sr\.?|lead|head of|director|vp|"
+    r"vice president|distinguished|fellow)\b",
+    re.I,
+)
+TITLE_JUNIOR = re.compile(
+    r"\b(junior|jr\.?|graduate|grad|intern|internship|trainee|apprentice|"
+    r"entry[- ]level|associate)\b",
+    re.I,
+)
+TITLE_MID = re.compile(r"\b(ii|iii|mid[- ]level|intermediate)\b", re.I)
+YEARS = re.compile(r"\b(\d{1,2})\s*\+?\s*years?\b", re.I)
+
+
 def infer_seniority(title: str, claim_texts: list[str]) -> str:
-    blob = " ".join([title] + claim_texts).lower()
-    if re.search(r"\b(principal|staff|lead|senior|sr\.?)\b", blob):
+    """Seniority from the job title; body text only for a years-of-experience
+    fallback when the title carries no level marker.
+
+    Known ambiguities, accepted rather than guessed at:
+      * "Manager" is a function, not a level, so it is NOT a senior marker.
+        "Engineering Manager" falls through to the years fallback.
+      * "Associate X" reads as junior only when the title has no senior marker,
+        so "Associate Director" is senior and "Associate Engineer" is junior.
+      * Numeric ladders differ between employers; II and III both map to mid.
+    """
+    t = title or ""
+    if TITLE_SENIOR.search(t):
         return "senior"
-    if re.search(r"\b(junior|jr\.?|graduate|intern|entry[- ]level)\b", blob):
+    if TITLE_JUNIOR.search(t):
         return "junior"
-    if re.search(r"\b(mid[- ]level|intermediate)\b", blob):
+    if TITLE_MID.search(t):
         return "mid"
-    if re.search(r"\b([5-9]\+|1[0-9]\+)\s*years?\b", blob):
-        return "senior"
-    if re.search(r"\b([0-2]|0–2|0-2)\s*\+?\s*years?\b", blob):
+
+    # Fallback: the smallest stated years figure, i.e. the minimum requirement.
+    years = [int(m) for m in YEARS.findall(" ".join(claim_texts))]
+    if years:
+        n = min(years)
+        if n >= 5:
+            return "senior"
+        if n >= 3:
+            return "mid"
         return "junior"
     return "unspecified"
 

@@ -23,10 +23,12 @@ Weekend-sized LLM pipeline: taxonomy → extract → classify → evaluate → a
 ## Intentionally Not Built
 
 - Lever / Ashby / HN fetchers (Greenhouse is enough for v1)
-- (Reversed 2026-09-13) `sumup` and `wolt` were briefly dropped for contributing
-  0 and 1 in-scope postings — but that evidence was invalid: the flat `--limit 25`
-  had truncated them alphabetically to 10 and 25 of their 240 and 50 jobs. Both
-  are back, to be judged on a full fetch.
+- (Reversed 2026-09-13, with evidence) `sumup` and `wolt` were briefly dropped for
+  contributing 0 and 1 in-scope postings. That evidence was an artefact of
+  alphabetical truncation. On a full fetch sumup contributes **45 in-scope
+  postings — 5th of 11 boards** — and is the **largest single source of the
+  `baltics` bucket (10 of 20)**, the one geographic rollup this project reports.
+  wolt contributes 22, including 19 to `eu`. Both kept.
 - Span-matching F1 for Stage 1 (extraction is spot-checked by reading, not scored)
 - Inter-annotator agreement (one annotator; only intra-annotator is available)
 - Hosted UI or charts app

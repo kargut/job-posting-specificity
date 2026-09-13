@@ -1,3 +1,22 @@
+- **Scope filtering is not optional.** The fetcher pulls whole boards and these
+  employers hire mostly salespeople. Raw: **2,176 postings across 11 boards**.
+  In scope: **781 (36%)**. After collapsing repeated role titles: **701**.
+  Sampling or aggregating unfiltered measures a classifier on sales and finance
+  postings while claiming software.
+- **Non-English postings are 2% of the raw corpus** (54, all from one board) and
+  are removed by the filter rather than assumed away.
+- **Seniority is read from the title, not the body.** The original rule searched
+  title + body for "senior|lead|principal|staff" and checked it first; bodies run
+  ~5,000 characters and those words appear in boilerplate ("you will lead incident
+  response"). 268 of 781 in-scope postings were labelled senior with no seniority
+  word in the title, producing `senior` 644 / `mid` 1 — a bucket firing once in 781
+  is a bug, not a finding. Title-first, with a stated-minimum-years fallback, gives
+  `senior` 517, `mid` 109, `unspecified` 96, `junior` 59.
+- **One row per job.** `content_hash` dedupe cannot catch a job re-fetched after
+  the employer edited it: the text differs, so the hash differs. Three jobs were
+  stored twice, revisions three days apart at 0.987–1.000 body similarity. The
+  fetcher now also dedupes on `id`, newest `fetched_at` winning.
+
 # Shared Context: Job Posting Specificity Scoring
 
 **Project:** Measure how much of a job posting is concrete commitment vs. filler.

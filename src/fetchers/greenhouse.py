@@ -29,6 +29,7 @@ import argparse
 import hashlib
 import html
 import json
+import os
 import random
 import re
 import sys
@@ -215,10 +216,26 @@ def normalize_posting(job: dict, source: str) -> dict:
 
 
 def save_batch(postings: list[dict], output_dir: Path) -> int:
-    """Append postings to JSONL, deduplicating by content_hash."""
+    """Merge postings into the corpus JSONL.
+
+    Two levels of deduplication, because content_hash alone is not enough:
+
+    * `content_hash` catches the same text arriving twice (e.g. the same job
+      cross-posted, or a board re-fetched unchanged).
+    * `id` catches the same job re-fetched AFTER the employer edited it. The text
+      differs, so the hash differs, and an append-only writer keeps both — the
+      first corpus ended up with three jobs stored twice, revisions 3 days apart
+      with 0.987-1.000 body similarity. On an id collision the NEWER `fetched_at`
+      wins and the older row is dropped, so the corpus holds one row per job.
+
+    Returns the number of postings added or refreshed.
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
     corpus_file = output_dir / "raw_postings.jsonl"
-    existing_hashes: set[str] = set()
+
+    by_id: dict[str, dict] = {}
+    order: list[str] = []
+    hashes: dict[str, str] = {}  # content_hash -> id that owns it
 
     if corpus_file.exists():
         with corpus_file.open(encoding="utf-8") as f:
@@ -228,25 +245,60 @@ def save_batch(postings: list[dict], output_dir: Path) -> int:
                     continue
                 try:
                     job = json.loads(line)
-                    h = job.get("content_hash")
-                    if h:
-                        existing_hashes.add(h)
                 except json.JSONDecodeError:
                     continue
+                pid = job.get("id")
+                if not pid:
+                    continue
+                if pid not in by_id:
+                    order.append(pid)
+                elif (job.get("fetched_at") or "") <= (
+                    by_id[pid].get("fetched_at") or ""
+                ):
+                    continue  # keep the newer row already held
+                by_id[pid] = job
+                if job.get("content_hash"):
+                    hashes[job["content_hash"]] = pid
 
-    saved = 0
-    with corpus_file.open("a", encoding="utf-8") as f:
-        for posting in postings:
-            h = posting["content_hash"]
-            if h in existing_hashes:
+    changed = 0
+    for posting in postings:
+        if not posting.get("content"):
+            continue  # list endpoint without content, or a blank post
+        pid = posting.get("id")
+        if not pid:
+            continue
+        h = posting.get("content_hash")
+
+        if pid in by_id:
+            old_at = by_id[pid].get("fetched_at") or ""
+            if (posting.get("fetched_at") or "") <= old_at:
                 continue
-            # Skip empty descriptions (list endpoint without content, or blank posts)
-            if not posting.get("content"):
-                continue
-            f.write(json.dumps(posting, ensure_ascii=False) + "\n")
-            existing_hashes.add(h)
-            saved += 1
-    return saved
+            if by_id[pid].get("content_hash") == h:
+                continue  # same job, same text: nothing to refresh
+            old_hash = by_id[pid].get("content_hash")
+            if old_hash in hashes and hashes[old_hash] == pid:
+                del hashes[old_hash]
+            by_id[pid] = posting
+            if h:
+                hashes[h] = pid
+            changed += 1
+            continue
+
+        if h in hashes:
+            continue  # identical text already in the corpus under another id
+        by_id[pid] = posting
+        order.append(pid)
+        if h:
+            hashes[h] = pid
+        changed += 1
+
+    tmp = corpus_file.with_suffix(corpus_file.suffix + ".tmp")
+    with tmp.open("w", encoding="utf-8") as f:
+        for pid in order:
+            if pid in by_id:
+                f.write(json.dumps(by_id[pid], ensure_ascii=False) + "\n")
+    os.replace(tmp, corpus_file)
+    return changed
 
 
 def main() -> None:
@@ -314,9 +366,9 @@ def main() -> None:
         ]
         saved = save_batch(normalized, output_path)
         total_new += saved
-        print(f"{len(all_jobs)} on board, {how}, {saved} new")
+        print(f"{len(all_jobs)} on board, {how}, {saved} new/updated")
 
-    print(f"\nTotal new postings saved: {total_new}")
+    print(f"\nTotal postings added or refreshed: {total_new}")
     print(f"Stored in: {output_path / 'raw_postings.jsonl'}")
 
 

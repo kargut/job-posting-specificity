@@ -150,15 +150,20 @@ how the number was produced.
    bucket; what the code separates is *department*, a narrower claim. Both values
    stay in `results/scores.jsonl` as diagnostics.
 8. **The corpus needs filtering, and the filter is imperfect.** Greenhouse serves
-   whole boards, and these employers hire mostly salespeople: 69% of the 272
-   fetched postings were sales, marketing or finance, and 8 were Italian. A scope
-   filter (`src/pipeline/role_filter.py`) cuts it to 83 English
-   software-and-adjacent postings, 69 after collapsing repeated role titles.
+   whole boards, and these employers hire mostly salespeople: of 2,176 fetched
+   postings only 36% are software-or-adjacent, and 2% are not in English. A scope
+   filter (`src/pipeline/role_filter.py`) cuts it to 781 postings, 701 after
+   collapsing repeated role titles.
    "Adjacent" deliberately includes pre-sales technical roles. The filter is
    keyword-based, so it admits occasional borderline cases — an operations or
    enablement role whose title carries a technical word — and would need a
    hand-audited exclusion list to be airtight.
-9. **Greenhouse only, English only.** Large US tech employers are
+9. **Seniority is inferred from the title, and some titles carry no level.**
+   "Manager" is a function rather than a level, so `Engineering Manager` falls
+   through to a stated-minimum-years fallback and otherwise lands in
+   `unspecified` (96 of 781). Numeric ladders differ between employers, so II and
+   III both map to `mid`. These are documented choices, not measurements.
+10. **Greenhouse only, English only.** Large US tech employers are
    over-represented, and their postings are written by people with a legal
    review process. Findings should not be read as applying to small European
    employers.
