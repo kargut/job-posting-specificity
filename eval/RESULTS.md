@@ -137,11 +137,20 @@ The only distinction the specificity score depends on.
 | F1 | 0.821 |
 | Claim pairs | 150 |
 
-**Read against the noise floor, not against zero.** The annotator's own pre-rule
-self-agreement on this boundary was 80.6% (section 1). The model sits **+6.1pp**
-above that — but the CI lower bound is 80, which lands exactly on the floor. The
-honest statement is: *the classifier is at least as consistent as the annotator,
-and probably better, but 150 claims cannot establish by how much.*
+**Read against the noise floor, not against zero** — but note which floor.
+
+The only self-agreement figure available is **80.6%, measured before the written
+Tier 1 rule existed**, on a different posting (section 1). The model sits +6.1pp
+above that, with a CI lower bound of 80 landing exactly on it.
+
+> **This comparison is against the annotator's worst consistency, not their
+> current one.** The rule in `prompts/shared_context.md` was written precisely to
+> raise that number, and post-rule self-agreement has not been measured. If it
+> comes in around 90%, the model at 86.7% is *below* the annotator and the
+> conclusion of this section inverts. Until that 30-claim re-label is done, the
+> only defensible statement is: **the classifier beats the annotator's pre-rule
+> consistency.** It is not yet known whether it beats the annotator's post-rule
+> consistency, and this report does not claim so.
 
 Quality gates, both cleared:
 
