@@ -1,6 +1,7 @@
 ---
 title: "Before you report LLM agreement, measure the human twice"
-published: false
+published: true
+url: https://dev.to/kargut/before-you-report-llm-agreement-measure-the-human-twice-1fn5
 tags: ai, llm, python, machinelearning
 ---
 
