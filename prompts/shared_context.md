@@ -1,6 +1,6 @@
 - **Scope filtering is not optional.** The fetcher pulls whole boards and these
   employers hire mostly salespeople. Raw: **2,176 postings across 11 boards**.
-  In scope: **781 (36%)**. After collapsing repeated role titles: **701**.
+  In scope: **780 (36%)**. After collapsing repeated role titles: **700**.
   Sampling or aggregating unfiltered measures a classifier on sales and finance
   postings while claiming software.
 - **Non-English postings are 2% of the raw corpus** (54, all from one board) and
@@ -11,7 +11,7 @@
   response"). 268 of 781 in-scope postings were labelled senior with no seniority
   word in the title, producing `senior` 644 / `mid` 1 — a bucket firing once in 781
   is a bug, not a finding. Title-first, with a stated-minimum-years fallback, gives
-  `senior` 517, `mid` 109, `unspecified` 96, `junior` 59.
+  `senior` 516, `mid` 109, `unspecified` 96, `junior` 59.
 - **One row per job.** `content_hash` dedupe cannot catch a job re-fetched after
   the employer edited it: the text differs, so the hash differs. Three jobs were
   stored twice, revisions three days apart at 0.987–1.000 body similarity. The

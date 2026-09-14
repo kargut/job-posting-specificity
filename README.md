@@ -259,16 +259,25 @@ how the number was produced.
 9. **The corpus needs filtering, and the filter is imperfect.** Greenhouse serves
    whole boards, and these employers hire mostly salespeople: of 2,176 fetched
    postings only 36% are software-or-adjacent, and 2% are not in English. A scope
-   filter (`src/pipeline/role_filter.py`) cuts it to 781 postings, 701 after
+   filter (`src/pipeline/role_filter.py`) cuts it to 780 postings, 700 after
    collapsing repeated role titles.
    "Adjacent" deliberately includes pre-sales technical roles. The filter is
-   keyword-based, so it admits occasional borderline cases — an operations or
-   enablement role whose title carries a technical word — and would need a
-   hand-audited exclusion list to be airtight.
+   keyword-based, so it matches *words* rather than functions, and three titles
+   were audited by hand for exactly that failure. Two were correct keeps: a Sales
+   Engineering leadership role (named as in-scope by the filter's own definition)
+   and a security intern with an opaque title, kept by the department fallback,
+   whose actual work is RBAC and access reviews. One was a false positive —
+   `Director of Ad Platform Operations`, kept because `platform` appears in the
+   title, though the role is ad operations and reads at the 2nd percentile of
+   technical-token density across the corpus. **The fix went into the rule, not a
+   hand-kept exclusion list**, since the sampler and the aggregator share this
+   module so that scope cannot drift between them; it removes exactly that one
+   posting. Word-matching will keep producing such cases, and the honest bound is
+   that the filter has been audited at the edges, not proven.
 10. **Seniority is inferred from the title, and some titles carry no level.**
    "Manager" is a function rather than a level, so `Engineering Manager` falls
    through to a stated-minimum-years fallback and otherwise lands in
-   `unspecified` (96 of 781). Numeric ladders differ between employers, so II and
+   `unspecified` (96 of 780). Numeric ladders differ between employers, so II and
    III both map to `mid`. These are documented choices, not measurements.
 11. **Greenhouse only, English only.** Large US tech employers are
    over-represented, and their postings are written by people with a legal

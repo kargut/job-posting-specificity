@@ -107,9 +107,9 @@ carry-through fixed, Stage 3 run.
    150-200 posting subset, which would replace the chars/4 cost estimate with
    real `usage` counts and give the first latency number
 
-**Deliberately not next:** scoring the full 781-posting corpus. It needs Stage 1
+**Deliberately not next:** scoring the full 780-posting corpus. It needs Stage 1
 + Stage 2 over all of them (~43,600 claims, ~5.5M input / ~5.0M output tokens)
 and an API runner that does not exist in this repo. Outside the weekend limit,
-and the corpus-wide facts the write-up actually needs — 2,176 fetched, 781 in
+and the corpus-wide facts the write-up actually needs — 2,176 fetched, 780 in
 scope, seniority and region distributions — come from raw metadata with no LLM
 at all.

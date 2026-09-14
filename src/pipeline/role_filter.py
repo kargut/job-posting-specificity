@@ -43,8 +43,19 @@ TECH_TITLE = re.compile(
 )
 
 # Non-technical function, even when a technical word appears in the title.
+#
+# The operations group is here because TECH_TITLE matches bare `platform`, and
+# "Ad Platform Operations" is the advertising product, not a platform team. That
+# posting is ad ops -- ad-server hygiene, yield groups, line items, programmatic
+# deals, "accelerate premium programmatic revenue" -- and reads at the 2nd
+# percentile of technical-token density across the in-scope corpus. Matching a
+# word is not matching a function, so the fix belongs in the rule rather than in
+# a hand-kept list of titles: the sampler and the aggregator share this module
+# precisely so scope cannot drift between them.
 NON_TECH_TITLE = re.compile(
     r"\b("
+    r"ad (?:platform )?operations|adops|ad ops|"
+    r"revenue operations|sales operations|business operations|"
     r"account executive|account manager|"
     r"\bsales\b(?!\s*engineer)|\bbdr\b|business development|"
     r"sales development|quota|"
