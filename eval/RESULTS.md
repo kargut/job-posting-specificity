@@ -139,6 +139,41 @@ conservative about Tier 1 and willing to use Tier 3, both of which push the rati
 down. Given the two structural biases in section 5 — which both inflate the human
 figure — the model's 0.340 is arguably the better estimate of the two.
 
+### Role context vs employer context
+
+The 0.340 above counts every claim. The **headline** `specificity_score` counts
+only role-context claims, dropping the employer's own company, culture and
+programmes sections — which pass the mechanical Tier 1 test easily (named
+programmes, named products, round numbers) while promising the candidate nothing.
+
+| | Value |
+|---|---|
+| Employer-context claims | 28 of 150 (18.7%) |
+| — by section | `company` 15, `culture/values` 10, `company programs` 3 |
+| Mean specificity, all claims | 0.3400 |
+| **Mean specificity, role context (headline)** | **0.3325** |
+| Largest single-posting move | 0.500 → 0.375 (down), 0.400 → 0.500 (up) |
+
+**The aggregate barely moves; individual postings move a lot.** The two means
+differ by 0.0075, but per-posting swings reach 0.125 in both directions, so the
+split matters for the per-posting table and not for the headline average. Across
+all 745 extracted claims the employer share is 25%, so it would matter more on a
+wider corpus.
+
+**This partition went un-exercised until 2026-09-14.** `ingest_classification.py`
+dropped Stage 1's `context_section` when flattening Stage 2 output, so every
+claim defaulted to role context and the two scores were byte-identical on all 15
+postings. `aggregate.py`'s unmapped-section warning caught it the first time the
+aggregator was run after Stage 2 finished — the warning was worth writing, and
+the silent default it guards was not worth having. Fixed by carrying the field
+through on ingest; no model calls were needed to recover the numbers.
+
+**It is still unvalidated.** `context_section` is a Stage 1 model output that was
+never hand-checked. All 745 values fall inside the expected vocabulary, which
+shows the model answered in the right *shape*, not that it answered correctly.
+Hand-checking ~150 section tags is roughly an hour and is the cheapest
+outstanding validation in the project.
+
 ## 4. Tier 1 / Other Boundary **[MEASURED]**
 
 The only distinction the specificity score depends on.
@@ -348,26 +383,53 @@ captured. The figures below are **derived from character counts of the actual
 files on disk** — exact and reproducible — converted at a 4-chars-per-token rule
 of thumb. JSON tokenises worse than prose, so treat the token numbers as ±25%.
 
-| Stage 2 input | Chars | ≈ Tokens |
-|---|---|---|
-| Prompt + shared context, re-sent per batch (×4) | 94,240 | 23,560 |
-| Claim batches (4 files) | 29,361 | 7,340 |
-| **Total input** | **123,601** | **~30,900** |
-| **Total output** | **44,331** | **~11,100** |
+**Both stages, 15 postings.** An earlier version of this section counted Stage 2
+only and the figure was quoted downstream as the pipeline cost. Stage 1 is the
+larger half; both are shown.
 
-Per posting: **~2,060 input / ~740 output tokens**.
-Per 1,000 postings: **~2.06M input / ~0.74M output tokens**.
+| Stage 1 | Chars | ≈ Tokens |
+|---|---|---|
+| Prompt + shared context, re-sent per batch (×4) | 88,784 | 22,196 |
+| Posting batches (4 files) | 94,999 | 23,750 |
+| **Total input** | **181,441** | **~45,400** |
+| **Total output** (745 claims) | **114,053** | **~28,500** |
+
+| Stage 2 | Chars | ≈ Tokens |
+|---|---|---|
+| Prompt + shared context, re-sent per batch (×4) | 95,740 | 23,935 |
+| Claim batches (4 files) | 29,395 | 7,349 |
+| **Total input** | **125,135** | **~31,100** |
+| **Total output** | **54,663** | **~13,700** |
+
+| Pipeline, per posting | Input | Output |
+|---|---:|---:|
+| Stage 1 | ~3,020 | ~1,900 |
+| Stage 2 (10 sampled claims) | ~2,070 | ~910 |
+| **Total, as run** | **~5,100** | **~2,810** |
+
+Per 1,000 postings, **as run**: **~5.10M input / ~2.81M output tokens**.
+
+**As run is not what production costs.** Stage 2 classified only the 10 sampled
+claims per posting — 150 of 745. Classifying every extracted claim scales the
+Stage 2 payload ~4.97×, giving **~7.04M input / ~6.43M output** per 1,000
+postings. Output roughly doubles; that is the number to quote for a real run.
 
 Cost per 1,000 postings = `2.06 × input_rate + 0.74 × output_rate` (rates per
 million tokens, taken from the vendor's current price list at time of writing —
 deliberately not hard-coded here, because published rates change and a stale
 number in a README is worse than an arithmetic instruction).
 
-### The finding: 76% of input tokens are prompt, not data
+### The finding: most input tokens are prompt, not data
 
-Of ~2,060 input tokens per posting, roughly **1,570 are the prompt** re-sent with
-each batch and only ~490 are the claims being classified. At four postings per
-batch the taxonomy is paid for four times over.
+**Stage 2: 76% of input is prompt.** Of ~2,070 input tokens per posting, roughly
+1,570 are the prompt re-sent with each batch and only ~500 are the claims being
+classified. At 3.75 postings per batch the taxonomy is paid for nearly four times
+over.
+
+**Stage 1: 49%**, because the payload — a full posting body, median 6,264 chars —
+is far larger than a list of claim spans. The leverage is in Stage 2.
+
+Across both stages the prompt is ~61% of all input tokens.
 
 Batching ten postings instead of four drops prompt overhead from ~1,570 to ~590
 tokens per posting — **input cost falls by about 48%** with no change to the
@@ -529,7 +591,7 @@ analysis above puts at roughly 7 claims in 50.
 | Tier 1 boundary above annotator self-agreement | **FAIL** — annotator post-rule 96.0%, model 86.7%. Passed against the pre-rule floor of 80.6%; fails once the floor is re-measured |
 | Annotator self-agreement re-measured after the written rule | **PASS** — 80.6% → 96.0% on the boundary (section 1) |
 | Extraction spot-checked against the source | **PASS** — section 5 |
-| Cost per 1,000 postings | **ESTIMATED** — from character counts, method and ±25% stated (section 6) |
+| Cost per 1,000 postings | **ESTIMATED** — from character counts of the run artifacts, both stages, method and ±25% stated (section 6) |
 | Latency per posting | **NOT MEASURABLE** from a chat-driven pipeline; needs an instrumented API run (section 6) |
 | Tier 3 observable at all | **FAIL** — 0 of 150 gold claims; scored as a two-tier metric (sections 5, 7) |
 

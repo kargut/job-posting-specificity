@@ -12,13 +12,15 @@ Weekend-sized LLM pipeline: taxonomy → extract → classify → evaluate → a
 | Shared taxonomy | `prompts/shared_context.md` | Ready |
 | Aggregation (scores + seniority/region rollups) | `src/pipeline/aggregate.py` | Working |
 | Label agreement checker | `eval/compare_labels.py` | Working |
-| Hand labels | `eval/labeled.jsonl` | 3 synthetic examples + `posting_A` (36 claims), blind=false. Grow to ~150 blind claims |
-| Annotator consistency measurement | `eval/annotator_passes.md` | Measured: 75.0% exact / 80.6% boundary self-agreement |
+| Hand labels (gold) | `eval/labeled.jsonl` | **Done: 150 claims / 15 postings, all blind, `--verify` clean** |
+| Post-rule 2nd pass | `eval/labeled_pass2_blind.jsonl` | **Done: 50 claims, blind** |
+| Annotator consistency measurement | `eval/annotator_passes.md` | Pre-rule 75.0% exact / 80.6% boundary; **post-rule 86.0% / 96.0%** |
+| Stage 2 ingest + validator | `eval/ingest_classification.py` | Working (tiers, claim_ids, text drift, `context_section` carry-through) |
 | Blind labeler CLI | `eval/label_claims.py` | Working (stdlib; `--selftest`, `--verify`) |
 | Corpus scope filter | `src/pipeline/role_filter.py` | Working (English + software/adjacent) |
 | Stage 1 ingest + validator | `eval/ingest_extraction.py` | Working (flattens JSON, enforces verbatim spans) |
 | Eval sample + batch builder | `eval/make_batches.py` | Working (scope + dedupe + balanced, seeded) |
-| Eval report | `eval/RESULTS.md` | Annotator section measured; model sections empty |
+| Eval report | `eval/RESULTS.md` | All sections measured (sections 4/6 merged by hand — `--report` wipes them) |
 | Data schema | `data/schema.md` | Reference |
 
 ## Intentionally Not Built
@@ -49,7 +51,8 @@ Weekend-sized LLM pipeline: taxonomy → extract → classify → evaluate → a
 | Model Tier 1 / Other boundary accuracy | **86.7%** [80, 91] |
 | Model Tier 1 precision / recall | 0.902 / 0.754 |
 | Model vs annotator post-rule consistency | **−8 to −9pp** |
-| Cost per 1,000 postings | ~2.06M in / ~0.74M out tokens (estimated, ±25%) |
+| Cost per 1,000 postings, as run | ~5.10M in / ~2.81M out tokens (measured from run artifacts, ±15%) |
+| Cost per 1,000 postings, all claims classified | ~7.04M in / ~6.43M out tokens |
 | Latency per posting | not measurable from a chat-driven pipeline |
 
 The classifier clears both absolute gates and **loses to a careful human** on the
@@ -58,6 +61,12 @@ floor inverted the result. Full report: `eval/RESULTS.md`.
 
 ## Known Limits of This Release
 
+- **The role/employer split went un-exercised until 2026-09-14.** Stage 2 output
+  dropped Stage 1's `context_section`, so every claim defaulted to role context
+  and the headline `specificity_score` was byte-identical to
+  `specificity_score_all_claims` on all 15 postings. Fixed in
+  `ingest_classification.py`; the partition is still unvalidated against hand
+  judgement. 28 of 150 claims (18.7%) are employer context.
 - **Tier 3 is defined but never observed in the first pass** — 0 of 150 labeled
   claims, though a blind post-rule re-label recovered 5 in 50. Stage 1 suppresses
   company slogans (2.3% of extracted claims are slogan-ish), and the mechanical
@@ -84,13 +93,23 @@ floor inverted the result. Full report: `eval/RESULTS.md`.
 
 ## Next Steps
 
-1. Re-label `posting_A` blind under the written Tier 1 rule
-   (`python eval/label_claims.py --pass 3 --relabel`); gold currently holds
-   pass 1 + the corrected degree-requirement call, and is marked blind=false
-2. `python eval/make_batches.py`, then Stage 1 over the 15-posting sample →
-   ~150 claims after a 10-per-posting cap
-3. Label tiers blind; re-label ~30 claims to re-measure self-agreement
-4. Stage 2 on the same claims, then `python eval/compare_labels.py ...`
-5. Spot-check extraction on 2-3 postings for the limitations section
-6. `python src/pipeline/aggregate.py ...` over the full corpus
-7. Publish findings + limitations
+Steps 1-6 of the original plan are complete: gold set labeled blind, post-rule
+self-agreement measured, Stage 2 run over all 15 postings, `context_section`
+carry-through fixed, Stage 3 run.
+
+1. Commit the `context_section` fix in `eval/ingest_classification.py`
+2. Merge Stage 2 + self-agreement numbers into `eval/RESULTS.md` sections 4 and 6
+   **by hand** — `--report` regenerates from a template and wipes sections 1, 2,
+   3, 5 and 7
+3. Decide the three borderline role titles (see `role_filter.py`)
+4. Write the dev.to post — consistently under-budgeted; deadline 6 October
+5. Optional, only if time allows: an instrumented API run over a stratified
+   150-200 posting subset, which would replace the chars/4 cost estimate with
+   real `usage` counts and give the first latency number
+
+**Deliberately not next:** scoring the full 781-posting corpus. It needs Stage 1
++ Stage 2 over all of them (~43,600 claims, ~5.5M input / ~5.0M output tokens)
+and an API runner that does not exist in this repo. Outside the weekend limit,
+and the corpus-wide facts the write-up actually needs — 2,176 fetched, 781 in
+scope, seniority and region distributions — come from raw metadata with no LLM
+at all.

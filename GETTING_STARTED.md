@@ -247,12 +247,34 @@ corpus (headcount is read out of the posting text, and postings do not state it)
 and every board in the corpus is a software/fintech employer, so sector has one
 real bucket. Reasoning in `prompts/shared_context.md`.
 
-**Outstanding code change:** `summary_md()` in `src/pipeline/aggregate.py`
-(around lines 246-247) still writes a `By Sector` and a `By Company Size` table
-into `results/summary.md`. Until those two `table(...)` calls are removed, a
-regenerated summary will contain the two rollups this project no longer reports.
-Delete them, and keep `by_sector` / `by_size` in `aggregates.json` as
-diagnostics.
+`summary.md` tables only seniority and region; `by_sector` and `by_size` remain
+in `aggregates.json` as diagnostics. (Done — this was an outstanding code change
+until 2026-09-13.)
+
+**Two scores per posting.** `specificity_score` (headline) counts role-context
+claims only; `specificity_score_all_claims` counts every claim. The partition is
+Stage 1's `context_section`, carried through Stage 2 by
+`eval/ingest_classification.py`. If you see:
+
+```
+WARNING: context_section values not in the Stage 1 vocabulary,
+counted as ROLE context:
+    150  (missing)
+```
+
+the ingest step dropped the field and the two scores are silently identical. Fix
+the ingest, then re-ingest the Stage 2 output — `--append` replaces by
+`posting_id`, so no model calls are needed:
+
+```bash
+for i in 1 2 3 4; do
+  python eval/ingest_classification.py eval/stage2_out_batch$i.json --append
+done
+```
+
+`PYTHONPATH` is **not** required: running the script by path puts `src/pipeline`
+on `sys.path` and `aggregate.py`'s `except ImportError` fallback catches the
+`role_filter` import.
 
 ## 9. Report
 
@@ -269,5 +291,5 @@ fetch
        ├→ spot-check extraction by hand (2–3 postings)      │
        └→ classify (LLM, Stage 2) ─────────────────────────┴→ compare_labels.py
                                                                    ↓ (if above noise floor)
-                                                   full corpus → aggregate.py → write-up
+                                                    gold set → aggregate.py → write-up
 ```

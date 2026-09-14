@@ -40,8 +40,10 @@ No `.env` or stored API keys. Greenhouse public boards need no auth; pass `--boa
 - **Tier 1 (Concrete):** Number, named tech, timeframe, or falsifiable commitment (`€60k`, `Go + PostgreSQL`, `team of nine`)
 - **Tier 2 (General direction):** Real intent, unspecific (`We invest in developer growth`, `modern stack`)
 - **Tier 3 (Empty slogan):** Generic filler (`fast-paced`, `we're like a family`)
-  — defined in the taxonomy but **never observed in the labeled set**; see
-  Evaluation below
+  — **0 of 150 claims in the gold set, but 5 of 50 on a blind re-label by the
+  same annotator a day later.** The category is not unreachable; the Tier 2/3
+  boundary is unstable enough that a 0% and a 10% rate are both consistent with
+  the taxonomy as written. See Evaluation below
 
 **The Tier 1 test** is mechanical, because it has to be: *quote the particular.*
 A claim is Tier 1 only if you can point at a number, a named technology, a named
@@ -52,6 +54,25 @@ work is not a Tier 1 criterion. Full rule and worked boundary cases:
 `prompts/shared_context.md`.
 
 **Score:** `specificity = tier_1 / (tier_1 + tier_2 + tier_3)`
+
+Two scores are reported, because a posting's Tier 1 count is not all about the
+job. An employer's philanthropy or product-marketing section passes the
+mechanical Tier 1 test effortlessly — named programmes, named products, round
+numbers — while promising the candidate nothing. Stage 1 tags every claim with a
+`context_section`, and Stage 3 partitions on it:
+
+| Field | Denominator |
+|---|---|
+| `specificity_score` (**headline**) | role-context claims only |
+| `specificity_score_all_claims` | every claim, employer sections included |
+| `employer_context_share` | how much of the posting was employer context |
+
+On the 15-posting gold set, 28 of 150 claims (18.7%) are employer context, and
+the two scores differ by up to 0.125 on a single posting (0.500 → 0.375 one way,
+0.400 → 0.500 the other) while the means differ by less than a point
+(0.340 → 0.3325). The split matters per posting, not in aggregate. It rests on
+`context_section`, which is a **model output, not a checked fact** — see
+Limitations.
 
 ## Project Structure
 
@@ -64,10 +85,13 @@ work is not a Tier 1 criterion. Full rule and worked boundary cases:
 ├── data/raw/                      # Fetched postings (gitignored)
 ├── data/extracted/                # Stage 1 output (gitignored)
 ├── data/classified/               # Stage 2 output (gitignored)
-├── eval/labeled.jsonl             # Hand labels (gitignored; local only)
+├── eval/labeled.jsonl             # Gold labels, blind (gitignored; local only)
+├── eval/labeled_pass2_blind.jsonl # Post-rule 2nd pass → self-agreement ceiling
 ├── eval/make_batches.py           # Stratified eval sample → Stage 1 batches
+├── eval/ingest_extraction.py      # Stage 1 ingest; refuses non-verbatim spans
+├── eval/ingest_classification.py  # Stage 2 ingest; refuses bad tiers/ids/drift
 ├── eval/label_claims.py           # Blind tier labeler + label linter
-├── eval/compare_labels.py         # Agreement metrics
+├── eval/compare_labels.py         # Agreement metrics (--self-agreement)
 ├── eval/annotator_passes.md       # Intra-annotator consistency measurement
 ├── eval/RESULTS.md                # Evaluation report
 └── results/                       # scores.jsonl, aggregates.json, summary.md
@@ -117,8 +141,11 @@ has to be read against.** Per-claim diff: `eval/annotator_passes.md`.
 150 claims across 15 postings, labeled blind. Overall specificity 0.407;
 per-posting 0.00–0.90, median 0.30.
 
-**Tier 3 was never observed, and that is the most useful thing this evaluation
-found.** Two causes, both upstream of the number:
+**Tier 3 was never observed in the gold set, and that is the most useful thing
+this evaluation found.** Not because the category is unreachable — the same
+annotator, same rules, a day later, produced 5 Tier 3 labels in 50 claims. A 0%
+rate and a 10% rate are both consistent with the taxonomy as written, which is a
+sharper problem than an unused tier. Two causes, both upstream of the number:
 
 1. **Stage 1 suppresses slogans.** 17 of 745 extracted claims (2.3%) match slogan
    patterns; 4 reached the sample. The postings are full of "we're on a mission
@@ -147,8 +174,19 @@ section 5.
 | Tier 1 / Other boundary accuracy | **86.7%** [80, 91] |
 | Tier 1 precision / recall | 0.902 / 0.754 |
 | Annotator post-rule self-agreement | **96.0%** |
-| Cost per 1,000 postings | ~2.06M input / ~0.74M output tokens (estimated, ±25%) |
+| Cost per 1,000 postings, **as run** | ~5.10M input / ~2.81M output tokens |
+| Cost per 1,000 postings, **all claims classified** | ~7.04M input / ~6.43M output tokens |
 | Latency per posting | not measurable from a chat-driven pipeline |
+
+Token figures are **measured from the artifacts of the actual run** — the four
+Stage 1 batch files, the four Stage 2 batch files, both prompt files, and the
+model output — at roughly 4 characters per token, then scaled. They are payload,
+not billed tokens: no prompt-cache accounting, no API overhead, so treat them as
+±15% and as a floor. Two rows because the eval run classified only the 10 sampled
+claims per posting (150 of 745); a production run classifies all of them, which
+roughly doubles output. Batching matters: the prompts are packed 3.75 postings
+per call, and even so the prompt preamble is **49% of Stage 1 input** — caching
+it is the single largest available saving.
 
 **The classifier does not beat a careful human.** It clears the absolute gates —
 86.7% boundary accuracy, 0.902 Tier 1 precision — but sits 8–9pp *below* the
@@ -193,16 +231,24 @@ how the number was produced.
    optimistic by an unquantified margin; comparisons between postings still hold,
    because the bias applies to all of them in the same direction.** The fix is a
    Stage 1 prompt change and a re-run. Detail in `eval/RESULTS.md` section 5.
-4. **Small eval set.** ~150 claims, so the boundary accuracy carries roughly
+4. **The role/employer split is unvalidated.** The headline score drops
+   employer-context claims, and the partition rests entirely on Stage 1's
+   `context_section` — a model output that was never hand-checked. All 745
+   extracted values fall inside the expected vocabulary, which shows the model
+   answered in the right shape, not that it answered correctly. A mislabelled
+   claim lands in the wrong denominator. This is why both scores and
+   `employer_context_share` are reported rather than one silently-cut number.
+   Cost to fix: hand-check ~150 section tags, roughly an hour.
+5. **Small eval set.** ~150 claims, so the boundary accuracy carries roughly
    ±7pp at 95% confidence. Claims of a few points' improvement are not
    supportable at this size.
-5. **Anchoring risk in the first labels.** The initial pass was made with model
+6. **Anchoring risk in the first labels.** The initial pass was made with model
    output visible, which inflates agreement in a way that cannot be undone.
    Those labels were redone blind; the protocol now requires it.
-6. **Equal weight per claim.** A salary range counts the same as a named
+7. **Equal weight per claim.** A salary range counts the same as a named
    database. A posting can raise its score by listing technologies while
    staying silent on pay.
-7. **Only two rollups are reported: seniority and region.** Size and sector were
+8. **Only two rollups are reported: seniority and region.** Size and sector were
    dropped because the data does not support them, not because they were
    uninteresting. `company_size` is inferred from the posting text and resolved
    to `unknown` for **143 of 144** postings in the first corpus — job postings do
@@ -210,7 +256,7 @@ how the number was produced.
    corpus is a software or fintech employer, so a sector rollup has one real
    bucket; what the code separates is *department*, a narrower claim. Both values
    stay in `results/scores.jsonl` as diagnostics.
-8. **The corpus needs filtering, and the filter is imperfect.** Greenhouse serves
+9. **The corpus needs filtering, and the filter is imperfect.** Greenhouse serves
    whole boards, and these employers hire mostly salespeople: of 2,176 fetched
    postings only 36% are software-or-adjacent, and 2% are not in English. A scope
    filter (`src/pipeline/role_filter.py`) cuts it to 781 postings, 701 after
@@ -219,12 +265,12 @@ how the number was produced.
    keyword-based, so it admits occasional borderline cases — an operations or
    enablement role whose title carries a technical word — and would need a
    hand-audited exclusion list to be airtight.
-9. **Seniority is inferred from the title, and some titles carry no level.**
+10. **Seniority is inferred from the title, and some titles carry no level.**
    "Manager" is a function rather than a level, so `Engineering Manager` falls
    through to a stated-minimum-years fallback and otherwise lands in
    `unspecified` (96 of 781). Numeric ladders differ between employers, so II and
    III both map to `mid`. These are documented choices, not measurements.
-10. **Greenhouse only, English only.** Large US tech employers are
+11. **Greenhouse only, English only.** Large US tech employers are
    over-represented, and their postings are written by people with a legal
    review process. Findings should not be read as applying to small European
    employers.

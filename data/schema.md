@@ -128,6 +128,7 @@ Output from Stage 2 (classification). Tiers assigned to extracted claims.
     {
       "claim_id": "extr_1",
       "text": "€60,000–75,000 gross",
+      "context_section": "compensation",
       "predicted_tier": 1,
       "confidence": 0.98,
       "reasoning": "Explicit salary range is concrete"
@@ -136,6 +137,14 @@ Output from Stage 2 (classification). Tiers assigned to extracted claims.
   "classified_at": "2026-09-10T15:30:00Z"
 }
 ```
+
+**On `context_section`:** copied through from Stage 1 by
+`eval/ingest_classification.py`, **not produced by the classifier.** Stage 3
+partitions role context from employer context on it. If it is absent, every claim
+silently defaults to role context and `specificity_score` collapses into
+`specificity_score_all_claims` — which is exactly what happened until 2026-09-14.
+`aggregate.py` prints a warning naming any value outside the Stage 1 vocabulary;
+that warning firing on `(missing)` means the ingest step dropped the field.
 
 **On the `model` field:** when a stage is run through a chat interface, this
 records the identifier that interface was configured with, **not a verified
@@ -148,6 +157,13 @@ Acceptable alternate key: `classifications` instead of `claims` (same object sha
 ## Results (`results/scores.jsonl`)
 
 Aggregated per-posting specificity scores.
+
+`specificity_score` is the **headline** and counts role-context claims only;
+`specificity_score_all_claims` counts every claim including the employer's own
+company and culture sections. `specificity_score` is `null` — not `0.0` — for a
+posting whose every claim is employer context, since averaging a fabricated zero
+in would be worse than excluding it. Rollups report `count` and `scored_count`
+separately for that reason.
 
 `sector` and `company_size` are present but **not reported** — they are
 diagnostics. `company_size` resolved to `unknown` for 143 of 144 postings in the
@@ -168,6 +184,11 @@ first corpus, and every board sampled is a software/fintech employer. Only
   "tier_2_claims": 7,
   "tier_3_claims": 2,
   "specificity_score": 0.40,
+  "specificity_score_all_claims": 0.40,
+  "role_claims": 12,
+  "role_tier_1_claims": 5,
+  "employer_claims": 3,
+  "employer_context_share": 0.20,
   "sector": "software",
   "company_size": "50-200",
   "seniority": "senior",
