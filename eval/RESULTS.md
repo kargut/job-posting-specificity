@@ -9,10 +9,18 @@ python eval/compare_labels.py eval/labeled.jsonl data/classified/claims.jsonl \
   --report eval/RESULTS.md
 ```
 
-Note: running the command above regenerates this file from the script's template
-and will drop the annotator-consistency section below. Keep
-`eval/annotator_passes.md` as the source of truth for it and paste it back, or
-write the report to a scratch path and merge by hand.
+**Do not run the command above against this file.** It regenerates the report
+from the script's template and wipes sections 1, 2, 3, 5 and 7 — every
+hand-written section, which by now is most of the document. Every number here was
+read from the script's stdout and merged in by hand. Write the report to a scratch
+path and diff it against this one instead.
+
+**On quoted claims.** Short claim quotes are used throughout as illustrations.
+Where a quote named the employer or one of its products, the name is replaced with
+`[Employer]` or `[Product]`: this project reports aggregate findings and does not
+attribute specificity judgements to identifiable companies. The brackets are
+deliberate anonymisation, not elision of anything else. Quotes carrying no
+identifying detail are reproduced verbatim.
 
 ---
 
@@ -334,9 +342,9 @@ land in Tier 1 or 2:
 requirement containing a quotable-but-uninformative noun escapes Tier 3:
 `English` is a named language, not a checkable particular about *this* job —
 nearly every posting in the corpus requires it. The same applies to the
-employer's own name: 4 Tier 1 claims are justified by quoting `Stripe` in a
-Stripe posting, of which only `Stripe Terminal` (a named product) is clearly
-defensible.
+employer's own name: 4 Tier 1 claims are justified by quoting the employer's own
+name inside that employer's own posting, of which only one — a named *product* of
+theirs — is clearly defensible.
 
 ### What this means for the numbers
 
@@ -473,10 +481,10 @@ disagreed on **4 of the 7**, and all four are the group flagged as "likely wrong
 
 | Pre-registered claim | Human | Model | Called it? |
 |---|---|---|---|
-| "Millions of companies—from the world's largest enterprises…use Stripe…" | 1 | **2** | Yes — flagged *likely wrong* |
-| "Stripe Terminal helps Stripe users extend their online presence…" | 1 | **2** | Yes — flagged *defensible*, model disagrees anyway |
-| "The Terminal team's mission is to make it as easy for businesses…" | 1 | **2** | Yes — flagged *borderline* |
-| "Share research insights that deepen Stripe's understanding of user needs" | 1 | **3** | Yes — flagged *likely wrong*; model went further, to Tier 3 |
+| "Millions of companies—from the world's largest enterprises…use [Employer]…" | 1 | **2** | Yes — flagged *likely wrong* |
+| "[Employer Product] helps [Employer] users extend their online presence…" | 1 | **2** | Yes — flagged *defensible*, model disagrees anyway |
+| "The [Product] team's mission is to make it as easy for businesses…" | 1 | **2** | Yes — flagged *borderline* |
+| "Share research insights that deepen [Employer]'s understanding of user needs" | 1 | **3** | Yes — flagged *likely wrong*; model went further, to Tier 3 |
 | "Proficient in both spoken and written English." | 1 | 1 | No — model agreed with the human |
 | "Excellent written and verbal communication skills in English" | 1 | 1 | No — model agreed |
 | "on a mission to empower small businesses across the globe" | 2 | 2 | No — model agreed |
@@ -550,7 +558,7 @@ model's answer.**
 | 2 | **3** | 3 | "can navigate ambiguity and create clarity where goals…are not yet defined" |
 | 2 | **3** | 3 | "You can balance strategy and execution, translating ambitious goals…" |
 | 1 | **2** | 2 | "Experience working with Identity Threat Detection & Response (ITDR)" |
-| 1 | **2** | 2 | "The Terminal team's mission is to make it as easy for businesses…" ← pre-registered |
+| 1 | **2** | 2 | "The [Product] team's mission is to make it as easy for businesses…" ← pre-registered |
 | 2 | **3** | 2 | "on a mission to empower small businesses across the globe" ← moved *away* |
 
 Agreement with the model, on these same 50 claims:
