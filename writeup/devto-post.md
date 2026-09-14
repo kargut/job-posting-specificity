@@ -2,7 +2,6 @@
 title: "Before you report LLM agreement, measure the human twice"
 published: false
 tags: ai, llm, python, machinelearning
-canonical_url:
 ---
 
 <!--
