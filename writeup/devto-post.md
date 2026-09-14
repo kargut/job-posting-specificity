@@ -89,7 +89,7 @@ Same model output. Opposite conclusion. **Which floor you pick decides the answe
 
 Against my second-pass ceiling the model loses; against the labels I later recanted, part of the loss is me. In the blind post-rule pass I changed 7 tiers, and **6 of those 7 landed on the model's answer** — without ever seeing the model's output.
 
-### Tier 3 never fired
+## Tier 3 never fired
 
 Zero of 150 gold claims landed in Tier 3. The tier built for empty slogans, run on these 15 job ads, found nothing.
 
@@ -102,7 +102,7 @@ The blind re-label makes it sharper. The same annotator, the same written rules,
 
 The consequence: on this gold set the score is in practice `tier_1 / (tier_1 + tier_2)`, inflated twice over. Comparisons between postings survive, because the bias runs the same direction for all of them. Absolute values must not be quoted as measurements of slogan content.
 
-### A slice that was not a sample
+## A slice that was not a sample
 
 `--limit 25` plus `jobs[:limit]` took an alphabetical slice, not a sample. Every posting pulled from one board had a title starting with "A". Every per-board statistic produced before I found it was invalid. Not an LLM problem; it would have changed a published number.
 
