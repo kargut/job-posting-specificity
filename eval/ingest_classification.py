@@ -106,7 +106,13 @@ def main() -> None:
     ap.add_argument("--force", action="store_true")
     args = ap.parse_args()
 
-    extracted = {r["posting_id"]: {str(c["claim_id"]): c["text"] for c in r["claims"]}
+    # Keep the WHOLE Stage 1 claim, not just its text. context_section has to ride
+    # along into data/classified/claims.jsonl: aggregate.py splits role context from
+    # employer context on it, and when it is absent every claim defaults to role
+    # context, which silently collapses specificity_score into
+    # specificity_score_all_claims. Measured 2026-09-14: 150/150 claims arrived with
+    # no context_section and the two scores were identical on all 15 postings.
+    extracted = {r["posting_id"]: {str(c["claim_id"]): c for c in r["claims"]}
                  for r in load_jsonl(EXTRACTED)}
     if not extracted:
         print(f"error: {EXTRACTED} is empty -- run Stage 1 first", file=sys.stderr)
@@ -145,7 +151,7 @@ def main() -> None:
             if tier not in (1, 2, 3):
                 bad_tier.append(f"{cid}={tier!r}")
                 continue
-            if c.get("text") and norm(c["text"]) != norm(src[cid]):
+            if c.get("text") and norm(c["text"]) != norm(src[cid]["text"]):
                 drifted.append(cid)
                 continue
             tiers[cid] = int(tier)
@@ -173,7 +179,9 @@ def main() -> None:
                 "model": p.get("model") or p.get("model_version") or "UNSPECIFIED",
                 "classification_prompt_version": p.get(
                     "classification_prompt_version", "1.0"),
-                "claims": [{"claim_id": cid, "text": src[cid],
+                "claims": [{"claim_id": cid, "text": src[cid]["text"],
+                            # from Stage 1, not the classifier -- see above
+                            "context_section": src[cid].get("context_section"),
                             "predicted_tier": t,
                             "reasoning": next((c.get("reasoning", "") for c in claims
                                                if str(c.get("claim_id")) == cid), "")}
