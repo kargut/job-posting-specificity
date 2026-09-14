@@ -120,6 +120,7 @@ The method's own limits, stated plainly. One annotator, so there is no inter-ann
 ## What I would tell someone building the same thing
 
 - Label a slice twice, blind, before you write down any accuracy number. Your own self-agreement is the ceiling, and it is lower than you think.
+- Log a warning when two metrics that should differ do not.
 - Write the boundary rule as a mechanical test, then enforce it in code. The linter that refuses an unquoted Tier 1 was worth more than every prompt iteration combined.
 - Publish the result that makes you look worse.
 
