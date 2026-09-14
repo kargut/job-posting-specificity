@@ -291,5 +291,5 @@ fetch
        ├→ spot-check extraction by hand (2–3 postings)      │
        └→ classify (LLM, Stage 2) ─────────────────────────┴→ compare_labels.py
                                                                    ↓ (if above noise floor)
-                                                    gold set → aggregate.py → write-up
+                                                    gold set → aggregate.py → writeup/devto-post.md
 ```

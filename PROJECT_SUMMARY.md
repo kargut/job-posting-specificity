@@ -22,6 +22,7 @@ Weekend-sized LLM pipeline: taxonomy → extract → classify → evaluate → a
 | Eval sample + batch builder | `eval/make_batches.py` | Working (scope + dedupe + balanced, seeded) |
 | Eval report | `eval/RESULTS.md` | All sections measured (sections 4/6 merged by hand — `--report` wipes them) |
 | Data schema | `data/schema.md` | Reference |
+| DEV write-up | `writeup/devto-post.md` | **Published:** [Before you report LLM agreement, measure the human twice](https://dev.to/kargut/before-you-report-llm-agreement-measure-the-human-twice-1fn5) |
 
 ## Intentionally Not Built
 
@@ -102,7 +103,7 @@ carry-through fixed, Stage 3 run.
    **by hand** — `--report` regenerates from a template and wipes sections 1, 2,
    3, 5 and 7
 3. Decide the three borderline role titles (see `role_filter.py`)
-4. Write the dev.to post — consistently under-budgeted; deadline 6 October
+4. ~~Write the DEV post~~ **Done** — [Before you report LLM agreement, measure the human twice](https://dev.to/kargut/before-you-report-llm-agreement-measure-the-human-twice-1fn5)
 5. Optional, only if time allows: an instrumented API run over a stratified
    150-200 posting subset, which would replace the chars/4 cost estimate with
    real `usage` counts and give the first latency number

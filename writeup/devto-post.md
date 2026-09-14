@@ -6,7 +6,9 @@ tags: ai, llm, python, machinelearning
 ---
 
 <!--
-Draft for dev.to. Iterate here, publish from here.
+Published 2026-09-14:
+https://dev.to/kargut/before-you-report-llm-agreement-measure-the-human-twice-1fn5
+The live post is the source of record; this file is the repo copy.
 
 Rule check: no company is named anywhere in this post. Keep it that way.
 -->

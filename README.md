@@ -2,7 +2,7 @@
 
 **A three-stage pipeline that scores how much of a job posting is concrete commitment versus filler.**
 
-Portfolio piece: GitHub repo + one write-up, focused on taxonomy design, evaluation, and honest limitations — not a hosted product.
+Portfolio piece: this repo + [Before you report LLM agreement, measure the human twice](https://dev.to/kargut/before-you-report-llm-agreement-measure-the-human-twice-1fn5) on DEV. Taxonomy, evaluation, and honest limitations — not a hosted product. Source markdown: `writeup/devto-post.md`.
 
 ## Quick Start
 
@@ -94,6 +94,7 @@ Limitations.
 ├── eval/compare_labels.py         # Agreement metrics (--self-agreement)
 ├── eval/annotator_passes.md       # Intra-annotator consistency measurement
 ├── eval/RESULTS.md                # Evaluation report
+├── writeup/devto-post.md          # Published DEV post (source copy)
 └── results/                       # scores.jsonl, aggregates.json, summary.md
 ```
 
@@ -301,10 +302,10 @@ Avoid LinkedIn / Indeed (ToS + optics).
 
 ## Files to Commit
 
-**Commit:** `src/`, `prompts/`, `data/schema.md`, `eval/` (scripts, `RESULTS.md`, `annotator_passes.md` — not `labeled.jsonl`), docs, `.gitignore`
+**Commit:** `src/`, `prompts/`, `data/schema.md`, `eval/` (scripts, `RESULTS.md`, `annotator_passes.md` — not `labeled.jsonl`), `writeup/`, docs, `.gitignore`
 
 **Do not commit:** `.env`, `data/raw/*.jsonl`, `data/extracted/`, `data/classified/`, `eval/labeled.jsonl`, full `results/` corpus
 
 ## Workflow
 
-See `GETTING_STARTED.md`. Prompt usage tips: `PROMPT_USAGE.md`. Taxonomy: `prompts/shared_context.md`.
+See `GETTING_STARTED.md`. Prompt usage tips: `PROMPT_USAGE.md`. Taxonomy: `prompts/shared_context.md`. Write-up: [DEV](https://dev.to/kargut/before-you-report-llm-agreement-measure-the-human-twice-1fn5) / `writeup/devto-post.md`.
