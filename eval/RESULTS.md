@@ -51,15 +51,30 @@ Enforcement, not just documentation: `eval/label_claims.py` refuses a Tier 1
 whose reasoning does not quote its claim, and `--verify` reports 34 errors when
 run against the drifted pass.
 
-### Post-rule consistency (re-measure after relabeling)
+### Post-rule consistency **[MEASURED]**
 
-| Measure | Value |
-|---|---|
-| Claims re-labeled blind | — |
-| Exact-tier agreement | — |
-| Tier 1 / Other boundary agreement | — (expect > 90% if the rule works) |
+50 claims from the blind gold set, re-labeled blind a day later, under the written
+Tier 1 rule.
 
----
+| Measure | Pre-rule | Post-rule | Change |
+|---|---|---|---|
+| Exact-tier self-agreement | 75.0% | **86.0%** [74, 93] | +11.0pp |
+| Tier 1 / Other self-agreement | 80.6% | **96.0%** [87, 99] | +15.4pp |
+| Claims | 36 | 50 | |
+
+Changed tiers: 7 of 50. Confusion 1→1 20, 1→2 2, 2→2 23, 2→3 5.
+
+> **This is not a controlled experiment, and the gap is partly confounded.** The
+> pre-rule figure is 36 claims from one posting under an earlier extraction run;
+> the post-rule figure is 50 claims spread across 15 postings from the current
+> run. The rule changed, but so did the corpus and the claim set. A 15.4pp move is
+> large enough that the rule is almost certainly responsible for most of it, but
+> the honest reading is "consistency improved substantially after the rule was
+> written", not "the rule caused exactly +15.4pp".
+
+The practical consequence is in section 4: the noise floor this project measures
+itself against moved from 80.6% to 96.0%, and that inverts the comparison with the
+classifier.
 
 ## 2. Test Set **[MEASURED]**
 
@@ -137,25 +152,37 @@ The only distinction the specificity score depends on.
 | F1 | 0.821 |
 | Claim pairs | 150 |
 
-**Read against the noise floor, not against zero** — but note which floor.
+**Read against the noise floor — and the floor has moved.**
 
-The only self-agreement figure available is **80.6%, measured before the written
-Tier 1 rule existed**, on a different posting (section 1). The model sits +6.1pp
-above that, with a CI lower bound of 80 landing exactly on it.
+| Comparison, same 50 matched claims | Boundary accuracy |
+|---|---|
+| Annotator pass 1 vs pass 2 (own consistency, post-rule) | **96.0%** [87, 99] |
+| Gold vs model | 88.0% [76, 94] |
+| Pass 2 vs model | 92.0% [81, 97] |
 
-> **This comparison is against the annotator's worst consistency, not their
-> current one.** The rule in `prompts/shared_context.md` was written precisely to
-> raise that number, and post-rule self-agreement has not been measured. If it
-> comes in around 90%, the model at 86.7% is *below* the annotator and the
-> conclusion of this section inverts. Until that 30-claim re-label is done, the
-> only defensible statement is: **the classifier beats the annotator's pre-rule
-> consistency.** It is not yet known whether it beats the annotator's post-rule
-> consistency, and this report does not claim so.
+On matched claims the model is **-8.0pp below the annotator's own consistency**.
+Against the full 150 it scores 86.7% versus the annotator's post-rule 96.0%, a
+gap of -9.3pp.
 
-Quality gates, both cleared:
+> **The conclusion here inverted once the floor was re-measured.** Against the
+> *pre-rule* floor of 80.6% the classifier looked +6.1pp better. Against the
+> *post-rule* floor of 96.0% it is roughly 8-9pp worse. The earlier reading was
+> comparing the model to the annotator's least consistent self. **A human who has
+> written the rule down beats this classifier on this boundary.**
+>
+> Both CIs are wide and overlap ([80, 91] against [87, 99]), so the gap is
+> indicative rather than established. What is established is that the model is
+> *not* demonstrably better than a careful annotator, and any claim that it is
+> would have depended entirely on which floor you chose.
+
+Absolute gates, both cleared:
 
 - Tier 1 boundary accuracy ≥ 80% — **PASS** (86.7%)
 - Tier 1 precision ≥ 0.85 — **PASS** (0.902)
+
+The relative gate — beat the annotator's self-agreement — **fails** against the
+post-rule floor. That gate was written in section 1 precisely so this could not be
+quietly skipped.
 
 Recall of 0.754 is the weaker half: the model declines Tier 1 on a quarter of the
 claims the annotator accepted. Section 7 shows that on several of those the model
@@ -245,7 +272,16 @@ claims (2.3%) match slogan patterns, and just 4 reached the 150-claim sample.
 The source postings are full of this language; Stage 1 drops it as atmosphere.
 The claims never reached the annotator, so Tier 3 could not be chosen.
 
-**Cause 2 — the Tier 1 rule made Tier 3 harder to reach.** Tier 1 was given a
+**Cause 2 — annotator drift, and it is the dominant cause.** *(Updated after the
+post-rule re-label.)* Re-labeling 50 gold claims under the written rule produced
+**5 Tier 2 → Tier 3 changes out of 7 total changes**, and the annotator's Tier 3
+count on those 50 went from 0 to 5 — against the model's 7. The category was
+reachable from this taxonomy all along; the first pass simply stopped reaching it.
+Extraction suppression (cause 1) is real and still inflates scores, but on the
+evidence the larger share of the Tier 3 absence was the annotator's boundary
+moving, not the claims being missing.
+
+**Why the boundary moved — the Tier 1 rule made Tier 3 harder to reach.** Tier 1 was given a
 mechanical test ("quote the particular"); the Tier 2 / Tier 3 boundary was left to
 the deletion test in prose. Sharpening one boundary destabilised the other. The
 same claim shapes that `posting_A` labeled Tier 3 *before* the rule existed now
@@ -439,27 +475,64 @@ escape-hatch reasoning to qualified technology mentions:
 whether Swift is used. The written rule says a hedge on a *list of named things*
 does not dissolve it. Here the annotator followed the rule and the model did not.
 
+### Independent convergence: the annotator moved toward the model
+
+The 50-claim post-rule re-label was done blind, with no Stage 2 output ever shown
+for those claims. The annotator changed 7 tiers. **Six of the seven moved to the
+model's answer.**
+
+| pass 1 | pass 2 | model | claim |
+|---|---|---|---|
+| 2 | **3** | 3 | "Understanding of the balance between speed and rigor" |
+| 2 | **3** | 3 | "Ability to work with urgency and focus while adapting methodological rigor…" |
+| 2 | **3** | 3 | "can navigate ambiguity and create clarity where goals…are not yet defined" |
+| 2 | **3** | 3 | "You can balance strategy and execution, translating ambitious goals…" |
+| 1 | **2** | 2 | "Experience working with Identity Threat Detection & Response (ITDR)" |
+| 1 | **2** | 2 | "The Terminal team's mission is to make it as easy for businesses…" ← pre-registered |
+| 2 | **3** | 2 | "on a mission to empower small businesses across the globe" ← moved *away* |
+
+Agreement with the model, on these same 50 claims:
+
+| | Exact | Boundary |
+|---|---|---|
+| Pass 1 (gold) vs model | 74.0% | 88.0% |
+| Pass 2 vs model | 84.0% | 92.0% |
+
+The annotator got closer to the classifier by relabeling more carefully, without
+seeing its output. Two independent processes converging on the same answers is
+stronger evidence that those answers are right than either process alone — and it
+means part of the reported 86.7% disagreement is the gold set being wrong rather
+than the model.
+
+The single claim that moved *away* is `on a mission to empower small businesses
+across the globe`: pass 2 says Tier 3, the model says Tier 2. By the deletion test
+the annotator is right and the model is wrong here.
+
 ### What this changes
 
 Nothing in the gold set. Labels were not edited after seeing model output — that
-is the anchoring failure the whole protocol exists to prevent. The conclusion is
-about the **taxonomy**, not the labels: Tier 1 needs a non-particulars exclusion
-list and Tier 3 needs a mechanical test, both already written up in section 5 as
-the deferred fix.
+is the anchoring failure the whole protocol exists to prevent, and the post-rule
+pass was run blind for the same reason. `eval/labeled_pass2_blind.jsonl` is kept
+as a separate file, not merged into gold.
+
+The conclusions are about the **taxonomy and the annotator**, not about which
+labels to change: Tier 1 needs a non-particulars exclusion list, Tier 3 needs a
+mechanical test, and the gold set carries a known error rate that the convergence
+analysis above puts at roughly 7 claims in 50.
 
 ## Quality Gates
 
 | Gate | Status |
 |---|---|
 | Tier 1 boundary accuracy ≥ 80% | **PASS** — 86.7%, 95% CI [80, 91] |
-| Tier 1 boundary above annotator self-agreement | **PASS, narrowly** — +6.1pp over the 80.6% floor, but the CI lower bound sits on it |
 | Tier 1 precision ≥ 0.85 | **PASS** — 0.902 |
+| Tier 1 boundary above annotator self-agreement | **FAIL** — annotator post-rule 96.0%, model 86.7%. Passed against the pre-rule floor of 80.6%; fails once the floor is re-measured |
+| Annotator self-agreement re-measured after the written rule | **PASS** — 80.6% → 96.0% on the boundary (section 1) |
 | Extraction spot-checked against the source | **PASS** — section 5 |
 | Cost per 1,000 postings | **ESTIMATED** — from character counts, method and ±25% stated (section 6) |
 | Latency per posting | **NOT MEASURABLE** from a chat-driven pipeline; needs an instrumented API run (section 6) |
 | Tier 3 observable at all | **FAIL** — 0 of 150 gold claims; scored as a two-tier metric (sections 5, 7) |
-| Annotator self-agreement re-measured after the written rule | **NOT DONE** — 30-claim blind re-label, needs a day's gap |
 
-Two gates are unmet and neither is hidden: latency cannot be obtained from this
-setup, and Tier 3 never appeared in the labels. Both have a stated cause and a
-stated fix.
+Three gates unmet, none hidden. The classifier does not beat a careful human on
+this boundary; latency cannot be obtained from this setup; Tier 3 never appeared
+in the first labeling pass. Each has a stated cause and a stated fix.

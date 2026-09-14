@@ -41,12 +41,28 @@ Weekend-sized LLM pipeline: taxonomy → extract → classify → evaluate → a
 - Rollups by sector — every board in the corpus is a software/fintech employer, so
   the rollup has one real bucket. What the code separates is *department*.
 
+## Headline Results
+
+| Measure | Value |
+|---|---|
+| Annotator self-agreement, boundary — pre-rule → post-rule | 80.6% → **96.0%** |
+| Model Tier 1 / Other boundary accuracy | **86.7%** [80, 91] |
+| Model Tier 1 precision / recall | 0.902 / 0.754 |
+| Model vs annotator post-rule consistency | **−8 to −9pp** |
+| Cost per 1,000 postings | ~2.06M in / ~0.74M out tokens (estimated, ±25%) |
+| Latency per posting | not measurable from a chat-driven pipeline |
+
+The classifier clears both absolute gates and **loses to a careful human** on the
+boundary. Measured against the pre-rule floor it appeared to win; re-measuring the
+floor inverted the result. Full report: `eval/RESULTS.md`.
+
 ## Known Limits of This Release
 
-- **Tier 3 is defined but never observed** — 0 of 150 labeled claims. Stage 1
-  suppresses company slogans (2.3% of extracted claims are slogan-ish), and the
-  mechanical Tier 1 rule lets generic requirements escape Tier 3 on uninformative
-  tokens. The score is in practice `tier_1 / (tier_1 + tier_2)` on this corpus.
+- **Tier 3 is defined but never observed in the first pass** — 0 of 150 labeled
+  claims, though a blind post-rule re-label recovered 5 in 50. Stage 1 suppresses
+  company slogans (2.3% of extracted claims are slogan-ish), and the mechanical
+  Tier 1 rule lets generic requirements escape Tier 3 on uninformative tokens;
+  the re-label shows annotator drift is the larger of the two causes. The score is in practice `tier_1 / (tier_1 + tier_2)` on this corpus.
   Shipped as a documented finding rather than fixed; the fix is a Stage 1 prompt
   change, a re-run and a re-label. See `eval/RESULTS.md` section 5.
 

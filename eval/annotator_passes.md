@@ -64,19 +64,36 @@ before-and-after on identical labels.
 predictions file carrying no `predicted_tier`, because comparing labels to
 labels silently produces a flattering number.
 
-## Post-rule self-agreement — still to measure
+## Post-rule self-agreement — MEASURED 2026-09-14
 
-The pre-rule figure above is a ceiling on what any model number can mean. The
-matching post-rule figure is **not** measured by re-labeling this posting: it
-should be measured on the blind gold set, which is the corpus the model is
-actually scored against.
+50 claims from the blind gold set, re-labeled blind a day after the first pass,
+under the written Tier 1 rule.
 
 ```bash
 python eval/label_claims.py --pass 2 --shuffle --relabel \
-    --out eval/labeled_pass2_blind.jsonl --limit 30
+    --out eval/labeled_pass2_blind.jsonl --limit 50
 python eval/compare_labels.py eval/labeled.jsonl eval/labeled_pass2_blind.jsonl \
     --self-agreement
 ```
 
-Thirty claims, a day after the first pass. Expect >90% if the written rule did
-its job.
+| Measure | Pre-rule | Post-rule | Change |
+|---|---|---|---|
+| Exact-tier | 75.0% (n=36) | **86.0%** [74, 93] (n=50) | +11.0pp |
+| Tier 1 / Other | 80.6% (n=36) | **96.0%** [87, 99] (n=50) | +15.4pp |
+
+Changed tiers: 7 of 50 — confusion 1→1 20, 1→2 2, 2→2 23, 2→3 5. Five of the
+seven are Tier 2 → Tier 3, which is why `RESULTS.md` section 5 now treats
+annotator drift as the dominant cause of the Tier 3 absence.
+
+**Not a controlled experiment.** Pre-rule is one posting under an earlier
+extraction run; post-rule is 50 claims across 15 postings from the current run.
+The rule changed and so did the corpus. The move is large enough to attribute
+mostly to the rule, but not cleanly measurable as such.
+
+**Consequence.** The noise floor this project measures against moved from 80.6%
+to 96.0%, which inverts the comparison with the classifier: the model's 86.7%
+beat the pre-rule floor by +6.1pp and loses to the post-rule floor by 9.3pp
+(-8.0pp on matched claims). See `RESULTS.md` section 4.
+
+Six of the seven changes independently landed on the model's answer, with no
+Stage 2 output ever shown for these claims — see `RESULTS.md` section 7.

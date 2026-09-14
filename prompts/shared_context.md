@@ -55,10 +55,13 @@ Could appear verbatim in an ad for a completely different job at a completely di
 
 **Test for Tier 3:** Delete the sentence. If nothing is lost, it is a slogan.
 
-> **KNOWN GAP.** Tier 1 has a mechanical test ("quote the particular"); Tier 3 has
-> only this prose test. That asymmetry showed up in the first blind labeling pass:
-> **0 of 150 claims were labeled Tier 3**, and claim shapes that were Tier 3 before
-> the Tier 1 rule existed now land in Tier 1 or 2. `Excellent written and verbal
+> **KNOWN GAP — with a measurement.** Tier 1 has a mechanical test ("quote the
+> particular"); Tier 3 has only this prose test. That asymmetry showed up in the
+> first blind labeling pass: **0 of 150 claims were labeled Tier 3**. A blind
+> re-label of 50 claims a day later, under the written rule, produced 5 Tier 3
+> calls and **5 of its 7 total changes were Tier 2 → Tier 3** — so the tier is
+> reachable and the first pass simply drifted past it. Careful labeling recovers
+> Tier 3; it should not have to. `Excellent written and verbal
 > communication skills in English` became Tier 1 on the quoted token `English` —
 > a named language, not a particular about *this* job.
 >

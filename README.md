@@ -80,30 +80,31 @@ Full report: `eval/RESULTS.md`. Protocol: `GETTING_STARTED.md` sections 3-6.
 ### Annotator consistency comes first
 
 Before reporting any model accuracy, the annotator was measured against
-themselves. The same 36 extracted claims from one real posting were tier-labeled
-twice, a day apart, before a written decision rule existed:
+themselves — twice, once before a written decision rule existed and once after.
 
-| Measure | Value |
-|---|---|
-| Exact-tier self-agreement | 75.0% (9 of 36 changed) |
-| Tier 1 / Other boundary self-agreement | 80.6% (7 of 36 crossed) |
-| Specificity score, pass 1 → pass 2 | 0.333 → 0.472 |
+| Measure | Pre-rule (n=36) | Post-rule (n=50) |
+|---|---|---|
+| Exact-tier self-agreement | 75.0% | **86.0%** [74, 93] |
+| Tier 1 / Other self-agreement | 80.6% | **96.0%** [87, 99] |
 
-The headline score moved 42% in relative terms with no change to the document.
-The original ≥80% quality gate was therefore sitting exactly on the noise floor:
-a model hitting it would have been indistinguishable from one merely as
-inconsistent as the human.
+In the first pass the same 36 claims were labeled twice a day apart, and the
+posting's specificity score moved 0.333 → 0.472 — 42% in relative terms, with no
+change to the document. The original ≥80% quality gate was therefore sitting
+exactly on the noise floor: a model hitting it would have been indistinguishable
+from one merely as inconsistent as the human.
 
 The fix was to turn the Tier 1 boundary into a mechanical test — quote the
-particular — and to enforce it in the tooling rather than in a habit:
-`eval/label_claims.py` refuses a Tier 1 whose reasoning does not quote the
-claim, and `--verify` audits an existing label file for the same thing. Run
-against the drifted pass, it flags 34 errors. Per-claim diff:
-`eval/annotator_passes.md`.
+particular — and to enforce it in tooling rather than habit. `label_claims.py`
+refuses a Tier 1 whose reasoning does not quote its claim, and `--verify` audits
+an existing label file for the same thing; run against the drifted pass it flags
+34 errors. `compare_labels.py` refuses a predictions file with no
+`predicted_tier`, because comparing hand labels to hand labels measures annotator
+agreement at best and nothing at all when the files share a lineage.
 
-`compare_labels.py` also now refuses a predictions file that carries no
-`predicted_tier`: comparing hand labels to hand labels measures annotator
-agreement at best, and nothing at all when the two files share a lineage.
+A blind 50-claim re-label after the rule gave 96.0% on the boundary. Not a
+controlled experiment — the corpus changed as well as the rule — but a large
+enough move to attribute mostly to the rule, and **the number everything else
+has to be read against.** Per-claim diff: `eval/annotator_passes.md`.
 
 ### Labeled set
 
@@ -123,11 +124,12 @@ found.** Two causes, both upstream of the number:
    patterns; 4 reached the sample. The postings are full of "we're on a mission
    to…" language — the extractor drops it as atmosphere, so it never reaches the
    annotator. A Stage 1 error is invisible to a Stage 2 metric.
-2. **The Tier 1 rule destabilised the Tier 2/3 boundary.** Tier 1 got a mechanical
-   test ("quote the particular"); Tier 3 was left to prose. Claim shapes that the
-   earlier gold posting labeled Tier 3 now land in Tier 1 or 2 — `Excellent
-   written and verbal communication skills in English` became Tier 1 on the quoted
-   token `English`, which is a named language, not a particular about *this* job.
+2. **Annotator drift — and this is the larger cause.** Tier 1 got a mechanical
+   test ("quote the particular"); Tier 3 was left to prose, so sharpening one
+   boundary destabilised the other. The blind post-rule re-label settles it: of 7
+   changed tiers, **5 were Tier 2 → Tier 3**, and the annotator's Tier 3 count on
+   those 50 claims went from 0 to 5 against the model's 7. The category was
+   reachable all along; the first pass stopped reaching it.
 
 So the reported 0.407 is inflated twice over: Tier 3 is missing from the
 denominator, and Tier 1 admits a false-positive class. On this corpus the metric
@@ -138,17 +140,27 @@ section 5.
 
 ### Model agreement
 
-_Not yet measured. Numbers go here once Stage 2 has been run against the blind
-labels; the boundary figure will be reported with a 95% CI and alongside
-post-rule annotator self-agreement, not on its own._
-
 | Measure | Value |
 |---|---|
 | Claims in eval set | 150 |
-| Tier 1 / Other boundary accuracy | — |
-| Tier 1 precision | — |
-| Cost per 1,000 postings | — |
-| Latency per posting | — |
+| Exact-tier accuracy | 76.7% [69, 83] |
+| Tier 1 / Other boundary accuracy | **86.7%** [80, 91] |
+| Tier 1 precision / recall | 0.902 / 0.754 |
+| Annotator post-rule self-agreement | **96.0%** |
+| Cost per 1,000 postings | ~2.06M input / ~0.74M output tokens (estimated, ±25%) |
+| Latency per posting | not measurable from a chat-driven pipeline |
+
+**The classifier does not beat a careful human.** It clears the absolute gates —
+86.7% boundary accuracy, 0.902 Tier 1 precision — but sits 8–9pp *below* the
+annotator's own post-rule consistency of 96.0%. Measured against the pre-rule
+floor of 80.6% it looked 6pp better; re-measuring the floor inverted the
+conclusion. Which floor you pick decides the answer, which is the main reason this
+project measures its own annotator first.
+
+One result points the other way. In the blind post-rule re-label the annotator
+changed 7 tiers, and **6 of 7 landed on the model's answer** without ever seeing
+its output — so some of the measured disagreement is the gold set being wrong
+rather than the model. Detail: `eval/RESULTS.md` sections 4 and 7.
 
 ## Limitations of the Method
 

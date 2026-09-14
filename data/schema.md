@@ -33,6 +33,7 @@ Human gold labels for the evaluation set. **This file holds blind labels only.**
 | `eval/labeled.jsonl` | The gold set: 15 postings, 150 claims, every row `blind: true` |
 | `eval/labeled_pass1.jsonl` | One posting labeled before the written Tier 1 rule existed, `blind: false`. Kept solely as the first term of the intra-annotator agreement measurement |
 | `eval/labeled_pass2.jsonl` | The second pass over that same posting, the other term |
+| `eval/labeled_pass2_blind.jsonl` | 50 gold claims re-labeled blind a day later, under the written rule. Second term of the post-rule self-agreement measurement. Never merged into gold |
 | `eval/labeled_examples.jsonl` | Three synthetic postings that demonstrate the file format |
 
 Keeping non-blind labels out of `labeled.jsonl` means no model-agreement number
