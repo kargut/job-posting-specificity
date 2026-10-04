@@ -41,7 +41,7 @@ Per model × variant:
 | Same, excluding `preregistered_suspect` rows | Do the suspect labels move the ranking? |
 | Exact-tier accuracy | A floor: gold has no Tier 3, so every Tier 3 prediction is wrong by construction. Say so in the table caption |
 | Tier 1 precision / recall / F1 | Recall < precision means the model is stricter than the annotator, as the original pipeline was (0.754 / 0.902) |
-| Quote validity | **Rule task only.** Share of Tier 1 predictions whose quoted particular is literally in the claim — the mechanical rule the annotator's own labeler enforces. Definitions rows leave this blank; the model was not asked for a quote |
+| Quote validity | **Rule task only.** Share of Tier 1 predictions for which `is_quote_of` accepts `quoted_particular`: at least 2 characters after normalize, not a stopword, and a normalized substring of the claim. This is the labeler's check for a quote typed as its own field. It is not `quotes_particular`, and it is not what `label_claims.py --selftest` or `--verify` measure. Definitions rows leave this blank; the model was not asked for a quote |
 | Quote agreement with gold | **Rule task only.** Of claims both call Tier 1, share where the quoted particulars overlap. Blank on the definitions task |
 | Tier 3 rate | Compare with gold 0/150 and human pass 2: 5/50 |
 | Structural errors | missing / duplicate / unknown claim_uids |

@@ -105,20 +105,33 @@ Record each file's sha256 and approximate token count in the log.
 
 `kaggle/src/score.py`, pure Python, no SDK import:
 
-- `normalize(s)` — reuse the normaliser logic from
-  `eval/ingest_classification.py` (folds en/em dashes and curly quotes,
-  collapses whitespace). Copy it; do not import from `eval/`.
+- `normalize(s)` — copy `norm` from `eval/label_claims.py` (lowercase, fold
+  en/em dashes and curly quotes, collapse whitespace). Copy it; do not import
+  from `eval/`. It is the same body as `eval/ingest_classification.py`.
+- Copy `STOPWORDS` and `is_quote_of` from `eval/label_claims.py` verbatim.
+  That is the function the labeler uses when a quote is typed as its own
+  field, which is what `quoted_particular` is. Do not copy
+  `quotes_particular` or `_informative_tokens`. Those search free-text
+  reasoning for a quoted span, an informative token, or a run of three or
+  more words. `--selftest` and `--verify` call `quotes_particular`. This
+  scorer does not.
+- `quote_valid` calls `is_quote_of(text, quoted_particular)` and keeps the
+  boolean only. On a Tier 1 prediction that means all three of: at least 2
+  characters after normalize, not a member of `STOPWORDS`, and a normalized
+  substring of the claim. Any one failure is `false`, including an empty
+  quote. Non-Tier-1 predictions leave `quote_valid` null; they are not in
+  that share. A quote the model was not asked to judge is not a failure.
 - `score_claim(gold_row, pred)` → `boundary_correct`, `exact_correct`,
-  `quote_valid` (rule variant only: pred Tier 1 ⇒ non-empty
-  `quoted_particular` that is a normalised substring of `text`),
-  `quote_matches_gold` (rule variant only: both Tier 1 and one quote contains
-  the other after normalising), `missing`. Definitions predictions have no
-  quote field. Those two flags are `null` there, not `false` — a false would
-  mean the model failed a test it was not given.
-- `score_batch(gold_rows, preds)` — a missing claim counts **wrong** on every
-  metric and increments `missing`; duplicate claim_uid keeps the first and
-  increments `duplicates`; unknown claim_uid is ignored and increments
-  `unknown`.
+  `quote_valid`, `quote_matches_gold` (rule variant only, and only when both
+  sides are Tier 1: one normalized quote contains the other), `missing`.
+  `quote_matches_gold` is containment. It does not call `is_quote_of`.
+  Definitions predictions have no quote field. Those two flags are `null`
+  there, not `false`.
+- `score_batch(gold_rows, preds)` — a missing claim counts **wrong** on
+  boundary and exact and increments `missing`. It has no Tier 1 prediction,
+  so `quote_valid` stays null and it is not in that share. Duplicate
+  claim_uid keeps the first and increments `duplicates`; unknown claim_uid
+  is ignored and increments `unknown`.
 - `wilson(k, n)`.
 
 `kaggle/src/test_score.py` — run with plain `python`, no pytest needed:
@@ -130,10 +143,51 @@ Record each file's sha256 and approximate token count in the log.
    nothing was dropped.
 2. Feed human pass 2 as predictions: **48/50 boundary, 43/50 exact** on the
    ceiling subset if nothing was dropped.
-3. Port the 13 quote-rule cases from `eval/label_claims.py --selftest`.
+3. `is_quote_of` cases, asserted through `quote_valid` on a Tier 1 prediction.
+   These replace the old "port the 13 selftest cases" instruction. The 13
+   cases call `quotes_particular(claim, reasoning)`. Passing them would not
+   mean `quote_valid` matches the labeler. Do not import `quotes_particular`,
+   do not copy it into the test, and do not report a green run as "same
+   metric as `label_claims.py`".
+
+   The quote field is the span itself, and `is_quote_of` accepts it:
+
+   | Claim | `quoted_particular` | Expected |
+   |---|---|---|
+   | `3+ years of experience conducting incident response` | `3+ years` | true |
+   | `using ATT&CK-mapped detection and signal enrichment` | `ATT&CK` | true |
+   | `Expert knowledge of Python and SQL` | `Python and SQL` | true |
+   | `€65,000–85,000 gross` | `€65,000-85,000` | true |
+   | `Experience with data processing and analysis tools (e.g. Spark, Trino)` | `Spark, Trino` | true |
+   | `Team of 5, growing to 8 by end of year` | `growing to 8 by end of year` | true |
+   | `On-call one week in six` | `one week in six` | true |
+
+   A non-empty substring is not enough. `is_quote_of` rejects these:
+
+   | Claim | `quoted_particular` | Expected | Why |
+   |---|---|---|---|
+   | `On-call one week in six` | `a` | false | shorter than 2 characters |
+   | `On-call one week in six` | empty | false | shorter than 2 characters |
+   | `Work cross-functionally with security, fraud and data science teams` | `teams` | false | stopword, even though it occurs in the claim |
+   | `Work cross-functionally with security, fraud and data science teams` | `work` | false | stopword |
+   | `using ATT&CK-mapped detection and signal enrichment` | `checkable tooling` | false | not a substring |
+
+   These two would pass `quotes_particular` if handed to it as reasoning,
+   because `ATT&CK` or the quoted span occurs inside the string. As a quote
+   field they must fail, because the whole string is not a substring:
+
+   | Claim | `quoted_particular` | Expected |
+   |---|---|---|
+   | `using ATT&CK-mapped detection and signal enrichment` | `checkable tooling ATT&CK` | false |
+   | `€65,000–85,000 gross` | `number: "€65,000–85,000"` | false |
+
+   The test file states, in a comment next to the assertions: `quote_valid`
+   agrees with `is_quote_of` on a dedicated quote field. It does not agree
+   with `quotes_particular`, `--selftest`, or `--verify`.
 4. Missing, duplicate and unknown claim_uid cases.
 
-All must pass before step 2.4.
+All must pass before step 2.4. A pass means boundary and exact match the
+golden counts, and `quote_valid` matches `is_quote_of` on the table above.
 
 ## Step 2.4 — the task template
 
@@ -247,6 +301,7 @@ extrapolation. Wait for approval. Then write the log section and stop.
 - Prompt sources: rule @ <hash> (<date>), definitions @ <hash> (<date>)
 - Prompt sizes: rule ≈ N tokens, definitions ≈ N tokens; sha256 ...
 - Scorer golden tests: pipeline 130/150 & 115/150 reproduced; human 48/50 & 43/50 reproduced
+- quote_valid: copied is_quote_of + STOPWORDS from label_claims.py; tests above passed. Not quotes_particular, not label_claims.py --selftest
 - Validation (2 batches, default model): boundary k/20, usage populated: yes/no
 - Extrapolated cost per full run per model: ...
 - Output contracts differ: rule asks for quoted_particular; definitions asks for tier + reasoning only
