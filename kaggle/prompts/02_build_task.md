@@ -41,6 +41,9 @@ res = f.evaluate(llm=[llm], evaluation_data=df, n_jobs=4,
 res.completed_runs.as_dataframe(); res.errored_runs   # aggregate completed only
 kbench.system.send(text)                     # system prompt inside a task
 llm.prompt(text, schema=PydanticModel)       # structured output, temperature 0 default
+# llm.prompt() keeps history inside one chat. A second call sees the first.
+# kbench.chats.new(name, orphan=True) starts a chat with no parent history.
+# Confirm the signature in the installed source before using it.
 kbench.assertions.assert_true(cond, expectation="...")   # recorded, does not raise
 run.chat.usage  # Usage(input_tokens, output_tokens, *_cost_nanodollars, total_backend_latency_ms)
 # Return annotations allowed: bool, int, float, tuple[int,int], tuple[float,float] (value ± CI), dict
@@ -228,6 +231,9 @@ class BatchResult(pydantic.BaseModel):
 # %%
 @kbench.task(name="classify-batch", store_task=False)
 def classify_batch(llm, batch_id: str, claims_json: str) -> dict:
+    # One prompt per call. Step 2.5 checks that the next batch does not see
+    # this one. system.send and llm.prompt move inside chats.new only if
+    # that check fails. See the rules under the template.
     kbench.system.send(PROMPT)
     out = llm.prompt("Classify these claims:\n" + claims_json, schema=BatchResult)
     return {"batch_id": batch_id, "preds": [r.model_dump() for r in out.results]}
@@ -241,7 +247,8 @@ def specificity(llm) -> tuple[float, float]:
     ...  #   expectation=f"{claim_uid} boundary" (no claim text)
     ...  # print one line per claim: KB_DETAIL {"claim_uid","pred_tier","boundary_correct",
     ...  #   "exact_correct","quote_valid","quote_matches_gold","missing"}  (no text, no quote)
-    ...  # print one KB_USAGE line per batch: tokens in/out, cost nanodollars, latency ms
+    ...  # print one KB_USAGE line per batch, with batch_id, so step 2.5 can
+    ...  #   compare them: input_tokens, output_tokens, cost nanodollars, latency ms
     ...  # print one KB_SUMMARY line with every aggregate metric
     return (boundary_acc, ci_half_width)      # Wilson, half-width = max distance to bounds
 
@@ -262,6 +269,20 @@ Rules for the template:
   `results.py` for how `MetricWithCI` is displayed before deciding.
 - Read usage from each sub-run's chat (`run.chat.usage` or whatever the
   installed source exposes); store `None` honestly when absent.
+- The smoke run in step 2.5 uses `n_jobs=1`. Parallel batches can hide a
+  shared chat. Raise `n_jobs` only after that run shows the two batches are
+  isolated.
+- If step 2.5 fails the history check, `classify_batch` becomes:
+
+  ```python
+  with kbench.chats.new(f"batch-{batch_id}", orphan=True):
+      kbench.system.send(PROMPT)
+      out = llm.prompt("Classify these claims:\n" + claims_json, schema=BatchResult)
+  ```
+
+  Both calls stay inside the block. `orphan=True` means the new chat is not
+  nested in the parent history; confirm that against the installed source and
+  use whichever argument starts a chat with no prior messages.
 - Do not set temperature or reasoning effort; record in the log that the
   defaults were used (temperature 0, provider-default reasoning).
 - No claim text, quote or reasoning in any printed line or assertion string:
@@ -280,10 +301,29 @@ Check, and show the user:
 
 1. A `*.run.json` was written for each; it contains 20 per-claim assertions,
    `KB_DETAIL`/`KB_USAGE`/`KB_SUMMARY` output and a numeric result.
-2. Usage fields are populated (not all `None`).
+2. Usage fields are populated (not all `None`). If `input_tokens` is missing
+   on either batch, stop. There is no way to tell whether batch 2 saw batch 1,
+   and the cost extrapolation would be a guess.
 3. Structural errors: missing / duplicate / unknown counts.
-4. Prompt tokens per call vs output tokens per call, and the extrapolated
-   cost of one full run (15 batches) per task per model.
+4. **History check, before any cost number.** Inside one chat, `llm.prompt()`
+   keeps history, so a second batch would send the system prompt again plus
+   the first batch's claims and answer. `evaluate()` may already start a fresh
+   run per row. The tokens decide. For each task, read `input_tokens` on
+   batch 1 and batch 2 from `KB_USAGE`:
+   - Pass: batch 2 is between 0.75× and 1.25× batch 1. Both batches hold 10
+     claims, so the prompts should be about the same size.
+   - Fail: batch 2 is above 1.5× batch 1, or batch 2 − batch 1 is larger than
+     batch 1's `output_tokens`. The second call is carrying the first.
+   On a failure, replace the `classify_batch` body with the `chats.new(...,
+   orphan=True)` form in the template. `system.send` and `llm.prompt` both go
+   inside that block. Confirm `orphan` against the installed source; use the
+   argument that starts a chat with no parent messages. Re-run this smoke test
+   at `n_jobs=1`. Do not push, and do not extrapolate cost, until both tasks
+   pass.
+5. Prompt tokens per call vs output tokens per call, and the extrapolated
+   cost of one full run. Use the mean `input_tokens` of the two passing
+   batches × 15, twice (one per task). A leaking run grows with batch number,
+   so 15 × the second batch overstates the real cost.
 
 If `MODEL_PROXY_API_KEY` has expired, run `kaggle b auth -y` and retry once.
 
@@ -291,8 +331,10 @@ If `MODEL_PROXY_API_KEY` has expired, run `kaggle b auth -y` and retry once.
 
 Show: the two commit hashes the prompts came from, the two output contracts
 side by side, prompt token counts, the definitions-file check from step 2.2,
-test results, the 2-batch validation output, and the per-model cost
-extrapolation. Wait for approval. Then write the log section and stop.
+test results, the 2-batch validation output, the batch-1 vs batch-2
+`input_tokens` for both tasks, whether `chats.new` was required, and the
+per-model cost extrapolation from the passing batches. Wait for approval.
+Then write the log section and stop.
 
 ## Log section to append
 
@@ -302,8 +344,9 @@ extrapolation. Wait for approval. Then write the log section and stop.
 - Prompt sizes: rule ≈ N tokens, definitions ≈ N tokens; sha256 ...
 - Scorer golden tests: pipeline 130/150 & 115/150 reproduced; human 48/50 & 43/50 reproduced
 - quote_valid: copied is_quote_of + STOPWORDS from label_claims.py; tests above passed. Not quotes_particular, not label_claims.py --selftest
-- Validation (2 batches, default model): boundary k/20, usage populated: yes/no
-- Extrapolated cost per full run per model: ...
+- Validation (2 batches, n_jobs=1, default model): boundary k/20, usage populated: yes/no
+- History check: batch2 input_tokens / batch1 input_tokens = ... (rule), ... (definitions); chats.new: used / not needed
+- Extrapolated cost per full run per model, from the mean of the two passing batches: ...
 - Output contracts differ: rule asks for quoted_particular; definitions asks for tier + reasoning only
 - Decisions: batch size 10, cross-posting batches, return type ...
 ```

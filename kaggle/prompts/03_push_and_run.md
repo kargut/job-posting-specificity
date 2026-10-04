@@ -42,6 +42,14 @@ run found the dataset under `/kaggle/input/` and produced 150 `KB_DETAIL`
 lines. If it errored, fix, re-push (with `-d`), re-run. Do not continue on a
 broken task.
 
+On that same log, sort `KB_USAGE` by `batch_id` and read `input_tokens`.
+Local isolation does not prove the server run is isolated. No batch may sit
+above 1.5× the median input of the 15. Input tokens that climb with
+`batch_id` mean each call still sees the earlier ones. Put `system.send` and
+`llm.prompt` inside `kbench.chats.new(..., orphan=True)`, re-push with `-d`,
+and re-run this smoke test. Do not choose the roster or extrapolate the full
+plan's cost from a climbing series.
+
 ## Step 3.3 — choose the models
 
 From `kaggle b t models` and `kaggle b quota`, propose a roster of **6–8
@@ -145,6 +153,7 @@ Do not decide this yourself.
 - Dataset: <KAGGLE_USER>/job-ad-claim-specificity (private|public)
 - Tasks pushed: versions ...
 - Smoke run: <model>, 150 KB_DETAIL lines: yes
+- Server history check: max input_tokens / median = ...; chats.new on server: used / not needed
 - Roster: model — slot — one-line reason
 - User predictions recorded: yes (see below, in the user's words)
 - Runs: completed N / errored N (causes ...)
