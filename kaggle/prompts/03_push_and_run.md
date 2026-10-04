@@ -15,9 +15,17 @@ kaggle datasets init -p kaggle\data_public
 ```
 
 Edit `dataset-metadata.json`: title `Job-ad claim specificity — anonymised gold set`,
-slug `job-ad-claim-specificity`, licence per the dataset card, description =
-the dataset card's first two paragraphs. Leak-scan the metadata file against
-the lexicon. Then:
+slug `job-ad-claim-specificity`, description = the dataset card's first two
+paragraphs, including the words "evaluation only". Set the license to the
+CLI's other slug:
+
+```json
+"licenses": [{"name": "other"}]
+```
+
+That slug means "Other (specified in description)". These rows are short
+excerpts from other people's ads, so `CC0-1.0` and any public-domain license
+are the wrong value. Leak-scan the metadata file against the lexicon. Then:
 
 ```powershell
 kaggle datasets create -p kaggle\data_public
@@ -60,7 +68,7 @@ models**, one line of rationale each, built from these slots:
 | Frontier model from each provider on the list | Does anyone reach the human ceiling? |
 | Small / fast model from the same providers | The rule is mechanical — does a cheap model apply it as well? This is the cost question the project cares about |
 | One or two open-weights models | Can it run without a commercial API at all? |
-| The Claude Opus model closest to the original pipeline's | Reproduction check: the chat run scored 130/150 boundary, 44/50 on the ceiling subset |
+| The Claude Opus model closest to the original pipeline's | Comparison with the chat run: 130/150 boundary, 44/50 on the ceiling subset. This run uses a different prompt, different batching, and redacted text, so agreement with 130/150 compares two setups. It does not separate the method from that one chat session |
 
 Estimate the cost of the full plan from the step 3.2 usage: models × 2 tasks
 × one run each. Show the remaining quota.

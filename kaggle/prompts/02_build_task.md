@@ -104,6 +104,16 @@ Then check the ablation was not filled back in:
 Leak-scan both files against `kaggle/private/lexicon.json`; zero hits.
 Record each file's sha256 and approximate token count in the log.
 
+The rule prompt's worked examples are paraphrased from this gold set. After
+both files exist, compare every example sentence in `prompt_rule.md` with
+every `text` in `kaggle/data_public/claims_anon.csv`, using the same
+`normalize` as the scorer. A pair is close when the two strings share four
+or more consecutive words, or one contains the other. Write the pairs to
+`kaggle/private/example_overlap.jsonl` (claim_uid and the example text). The
+log records only the count. A count above zero goes into the step 4
+limitations: those items can inflate the rule task. A count of zero is
+recorded and then left out of the post.
+
 ## Step 2.3 — the scorer, with golden tests before any model call
 
 `kaggle/src/score.py`, pure Python, no SDK import:
@@ -336,10 +346,10 @@ If `MODEL_PROXY_API_KEY` has expired, run `kaggle b auth -y` and retry once.
 
 Show: the two commit hashes the prompts came from, the two output contracts
 side by side, prompt token counts, the definitions-file check from step 2.2,
-test results, the 2-batch validation output, the batch-1 vs batch-2
-`input_tokens` for both tasks, whether `chats.new` was required, and the
-per-model cost extrapolation from the passing batches. Wait for approval.
-Then write the log section and stop.
+the worked-example overlap count, test results, the 2-batch validation
+output, the batch-1 vs batch-2 `input_tokens` for both tasks, whether
+`chats.new` was required, and the per-model cost extrapolation from the
+passing batches. Wait for approval. Then write the log section and stop.
 
 ## Log section to append
 
@@ -347,6 +357,7 @@ Then write the log section and stop.
 ## Step 2 — tasks (YYYY-MM-DD)
 - Prompt sources: rule @ <hash> (<date>), definitions @ <hash> (<date>)
 - Prompt sizes: rule ≈ N tokens, definitions ≈ N tokens; sha256 ...
+- Worked-example overlap with gold claims: N (pairs in private/example_overlap.jsonl)
 - Scorer golden tests: pipeline 130/150 & 115/150 reproduced; human 48/50 & 43/50 reproduced
 - quote_valid: copied is_quote_of + STOPWORDS from label_claims.py; tests above passed. Not quotes_particular, not label_claims.py --selftest
 - Validation (2 batches, n_jobs=1, default model): boundary k/20, usage populated: yes/no

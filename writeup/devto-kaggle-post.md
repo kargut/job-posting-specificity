@@ -71,7 +71,7 @@ The dataset is {{DATASET_VISIBILITY}} on Kaggle. The task code and the leaderboa
 
 - **Does any model reach the human ceiling?** The frontier model from each provider on Kaggle's list.
 - **Is a mechanical rule cheap to follow?** The small, fast model from the same providers. If the rule really is mechanical, they should not trail far.
-- **Does my old number reproduce?** The original pipeline ran through a chat interface. On the {{N_CEILING}} ceiling claims it agreed with my gold labels on 44 of 50; I agreed with myself on 48. Re-running a Claude Opus model through Kaggle tests whether that 88.0% vs 96.0% gap belongs to the method or to one chat session.
+- **How does a fresh Claude Opus run compare with the old chat run?** That run agreed with my gold labels on 44 of 50 ceiling claims, and on 130 of 150 overall. This run uses a different prompt, different batching, and redacted text. Agreement with 130/150 compares the two setups. It does not separate the method from that one chat session.
 
 Same settings for every model: Kaggle defaults (temperature 0, provider-default reasoning), ten claims per call, the same system prompt.
 
@@ -131,7 +131,7 @@ On my second pass I changed 7 of 50 tiers, and 6 of those 7 moved to the origina
 Gold has zero Tier 3 claims. A day later, under the same rules, I used Tier 3 on 5 of 50. The models used it on {{T3_RANGE}}. Everyone, me included, is unstable on that boundary, which is why exact-tier accuracy is a floor in this benchmark and boundary accuracy is the headline.
 -->
 <!-- REPRODUCTION:
-Through Kaggle, {{REPRO_MODEL}} scored {{REPRO_K}}/150 on the boundary, against 130/150 from the original chat run. The two runs agreed with each other on {{REPRO_AGREE}} of 150 claims.
+{{REPRO_MODEL}} agreed with the original chat run on {{REPRO_AGREE}} of the claims it answered. Its all-claims boundary was {{REPRO_K}}/150, next to the chat run's 130/150. The prompt, the batching, and the redacted text differ, so this compares two setups. It does not separate the old 88% vs 96% gap into method and chat session.
 -->
 
 ### What surprised me
@@ -152,6 +152,7 @@ Before the full runs I wrote four predictions into the build log. I got {{PRED_R
 - **Anything about the employers.** Not honesty, not job quality.
 - **General capability.** {{N_CLAIMS}} short claims, one boundary.
 - **Difficulty after redaction.** {{N_REDACTED}} of {{N_CLAIMS}} texts were changed by anonymisation, and that can make an item easier or harder.
+<!-- EXAMPLE OVERLAP: if LOG step 2 records N>0, add this bullet and then delete this comment. If N is 0, delete the comment and add nothing. "N of the gold claims sit close to a worked example in the rule prompt. Those examples were paraphrased from this set, which can inflate the rule task." No claim text. -->
 
 ## My Benchmark
 

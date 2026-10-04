@@ -35,6 +35,7 @@ claims, so 48/50 and 44/50 changed), the source wins — fix every occurrence.
 | `FIGURE_URL` | leave as `FIGURE_URL` and tell the user to upload `kaggle/figures/boundary.png` in the editor and paste the URL |
 | `KAGGLE_BENCHMARK_URL`, `TASK_RULE_URL`, `TASK_DEFINITIONS_URL` | LOG step 3 |
 | `CHECKPOINT_STORY` | LOG, any step — only a real event; otherwise delete |
+| Example-overlap bullet | LOG step 2 count. Add the bullet in the draft's EXAMPLE OVERLAP comment when the count is above zero. When it is zero, delete the comment |
 
 For each FILL comment with branches: keep only the branch the data supports,
 fill its numbers, delete the comment markers and every other branch. If the

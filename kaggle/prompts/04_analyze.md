@@ -14,7 +14,7 @@ a proportion is reported, and no ranking claim the CIs do not support.
 - `kaggle/private/runs/**` — run files, logs and source notebooks
 - `kaggle/data_public/claims_anon.csv` — gold and subset flags
 - `kaggle/private/id_map.json` + `data/classified/claims.jsonl` — original
-  pipeline predictions, for the reproduction check
+  pipeline predictions, for the chat-run comparison
 - `kaggle/private/runs/repeat/` — if step 3.5 ran
 - The user's pre-registered predictions in `kaggle/LOG.md`
 
@@ -74,9 +74,12 @@ Across models:
    unanswered claim is not a wrong tier. How many, how many are
    pre-registered suspects, how many are `label_at_risk` from step 1. These
    are candidates for gold errors, not model errors — but do not relabel.
-4. **Reproduction.** For the Claude Opus model chosen as the reproduction
-   slot: all-claims boundary and answered boundary, next to the chat run's
-   130/150, plus claim-level agreement on claims the Kaggle run answered.
+4. **Comparison with the chat run.** For the Claude Opus model in that slot:
+   all-claims boundary and answered boundary, next to the chat run's 130/150,
+   plus claim-level agreement on claims the Kaggle run answered. The prompt,
+   the batching, and the redacted text all differ. Report the agreement as a
+   comparison of two setups. Do not write that the result shows whether the
+   old gap was the method or one chat session.
 5. **Cost-effectiveness.** Answered boundary accuracy against $ per 1,000
    claims, one point per model. Name the cheapest model whose answered CI
    overlaps the best model's. Do not call a model expensive or cheap because
@@ -114,11 +117,19 @@ Load the `dataviz` skill first if it is available.
 
 Sections: setup (dataset size after anonymisation, prompt sources, roster,
 date, settings); headline table; ceiling comparison; rule vs definitions;
-disputed claims; cost and latency; reproduction; predictions vs outcomes;
+disputed claims; cost and latency; chat-run comparison; predictions vs outcomes;
 what this benchmark does **not** measure (it measures agreement with one
 annotator's rulebook on 150 claims — not truth, not job-ad quality, not
 general model capability; Tier 2/3 instability makes exact-tier a floor;
-anonymisation may have changed some items' difficulty).
+anonymisation may have changed some items' difficulty). Two further limits,
+stated there when they apply:
+
+- The chat-run comparison uses a different prompt, different batching, and
+  redacted text. Agreement with 130/150 compares the two setups.
+- If step 2 logged any gold claim close to a worked example in the rule
+  prompt, give the count. Those examples were paraphrased from this gold
+  set, and a close claim inflates the rule task. Claim text stays out of
+  this file. If the log says zero, omit the point.
 
 No claim text, no company names. Leak-scan the file against the lexicon.
 
@@ -137,7 +148,7 @@ three the post should lead with. Then write the log section and stop.
 - Models with unanswered claims: <model> k/n, all-claims X%, answered Y%
 - Human ceiling (subset): 48/50 = 96.0% [86.5–98.9]; models at or above: ...
 - Rule vs definitions: ...
-- Reproduction vs chat run: ...
+- Chat-run comparison: agreement k/n on answered claims; 130/150 is a different prompt, batching, and redacted text
 - Cost: cheapest within best CI: <model>, $X per 1,000 claims
 - Predictions: k right / k wrong / k unclear
 - Findings chosen by user for the post: 1. 2. 3.

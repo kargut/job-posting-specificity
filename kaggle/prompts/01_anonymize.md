@@ -100,7 +100,7 @@ the same ad is the largest single anonymisation gain.
 Dropped: `posting_id`, `posting_content`, company, board, title, URL,
 locations, every timestamp, the free-text reasoning (only the quoted
 particular survives), and the original model's predictions (kept privately
-for the reproduction check in step 4).
+for the comparison with the chat run in step 4).
 
 ## Step 1.4 — redaction
 
@@ -147,23 +147,32 @@ Save queries and verdicts in `kaggle/private/audit/search.jsonl`.
 
 ## Step 1.6 — audit B: model re-identification attack
 
-Spawn a fresh subagent that has **no** access to `kaggle/private/` or the
-repo. Give it only the anonymised CSV's `claim_uid, text, context_section`
-columns and this instruction:
+Paste the attack into a fresh subagent. Do not give it a file path, a folder,
+or this repo. A subagent launched in this workspace can open
+`kaggle/private/` and the lexicon, and a hit scored from those files voids
+the round.
+
+The message contains only a table of `claim_uid`, `text`, and
+`context_section`, plus this instruction:
 
 > You are testing an anonymised dataset. These are claims from 15 job ads by
-> real employers; names were removed. List every employer you can identify,
-> with your confidence (high / medium / low) and the claim_uids that gave it
-> away. Guess only where you have evidence in the text.
+> real employers; names were removed. The table in this message is the only
+> source. Do not read files, do not search the workspace, and do not use
+> tools. List every employer you can identify, with your confidence
+> (high / medium / low) and the claim_uids that gave it away. Guess only
+> where you have evidence in the table.
 
-Score its answer against the lexicon yourself: a **hit** is a correct
+After it answers, read its transcript. If it opened a file, searched the
+workspace, or named a path in this repo, discard the round and run it again.
+Score a clean answer against the lexicon yourself: a **hit** is a correct
 employer at high or medium confidence. For each hit, redact or drop the
-claims it cites, then re-run the attack with a new subagent. Stop when there
-are zero high/medium hits, or after three rounds — then report what is left
-and let the user decide.
+claims it cites, then re-run the attack with a new subagent and a new paste.
+Stop when there are zero high/medium hits, or after three rounds — then
+report what is left and let the user decide.
 
 Record for the log: hits in round 1, hits in the final round, claims dropped,
-claims further redacted. Counts only, no names.
+claims further redacted, and whether any round was voided. Counts only, no
+names.
 
 ## Step 1.7 — leak scan and golden checks
 
@@ -183,17 +192,19 @@ claims further redacted. Counts only, no names.
 
 `kaggle/data_public/DATASET_CARD.md`, no employer names:
 
-- Source: public job-board APIs, fetched September 2026; 15 postings from 11
-  boards; claims extracted by an LLM (Stage 1) and labelled blind by one
-  annotator under a written rulebook.
+- Source: public job-board APIs, fetched September 2026. These 15 postings
+  are a sample drawn from a larger corpus of 11 boards. They are not one
+  posting from each board. Claims were extracted by an LLM (Stage 1) and
+  labelled blind by one annotator under a written rulebook.
 - What each column means; the tier definitions in two lines each.
 - Anonymisation steps and both audit results (counts).
 - Known label issues, stated plainly: zero Tier 3 in gold; seven
   pre-registered suspect labels; one annotator, so intra- not inter-annotator
   agreement; 150 claims ≈ ±5.5pp at 95% near 87%.
 - Intended use: evaluating rule-following classifiers. Not for training.
-- Licence: claims are short excerpts from third-party job ads; mark the
-  dataset for evaluation research only and say so.
+- Licence: short excerpts from third-party job ads, for evaluation only.
+  Say that in the card. Do not call the file public domain. The Kaggle
+  metadata slug is set in step 3.
 
 ## CHECKPOINT — user review (in chat only)
 
@@ -215,7 +226,7 @@ checks, then write the log section and stop.
 - Rows: 150 in, N out (dropped: k tagline, k figure-only, ...)
 - Redacted: N claims; placeholder counts by type
 - Audit A: N searches, N hits before → 0 after
-- Audit B: round-1 high/medium hits N, final N, rounds R
+- Audit B: round-1 high/medium hits N, final N, rounds R; paste-only: yes; voided rounds: N
 - Ceiling subset after drops: X/Y boundary, X/Y exact
 - Decisions: ...
 - Surprises: ...
