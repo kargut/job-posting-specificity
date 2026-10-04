@@ -131,10 +131,11 @@ Record each file's sha256 and approximate token count in the log.
   Definitions predictions have no quote field. Those two flags are `null`
   there, not `false`.
 - `score_batch(gold_rows, preds)` — a missing claim counts **wrong** on
-  boundary and exact and increments `missing`. It has no Tier 1 prediction,
-  so `quote_valid` stays null and it is not in that share. Duplicate
-  claim_uid keeps the first and increments `duplicates`; unknown claim_uid
-  is ignored and increments `unknown`.
+  boundary and exact in the all-claims score and increments `missing`. It has
+  no Tier 1 prediction, so `quote_valid` stays null. The same claim is excluded
+  from `boundary_answered` and `exact_answered`. Duplicate claim_uid keeps the
+  first and increments `duplicates`; unknown claim_uid is ignored and increments
+  `unknown`. A failed batch is ten missing claims, not ten wrong tiers.
 - `wilson(k, n)`.
 
 `kaggle/src/test_score.py` — run with plain `python`, no pytest needed:
@@ -242,15 +243,19 @@ def classify_batch(llm, batch_id: str, claims_json: str) -> dict:
 @kbench.task(name="job-ad-specificity-rule")   # slug differs per render
 def specificity(llm) -> tuple[float, float]:
     ...  # evaluate classify_batch over the 15 batches, on_failure="continue"
-    ...  # score every claim; a failed batch scores all its claims wrong
+    ...  # a failed batch marks all its claims missing. Missing counts wrong in
+    ...  #   boundary_all (the returned leaderboard number) and is left out of
+    ...  #   boundary_answered
     ...  # one kbench.assertions.assert_true per claim:
     ...  #   expectation=f"{claim_uid} boundary" (no claim text)
     ...  # print one line per claim: KB_DETAIL {"claim_uid","pred_tier","boundary_correct",
     ...  #   "exact_correct","quote_valid","quote_matches_gold","missing"}  (no text, no quote)
+    ...  #   missing is true when the batch failed or the claim got no tier
     ...  # print one KB_USAGE line per batch, with batch_id, so step 2.5 can
     ...  #   compare them: input_tokens, output_tokens, cost nanodollars, latency ms
-    ...  # print one KB_SUMMARY line with every aggregate metric
-    return (boundary_acc, ci_half_width)      # Wilson, half-width = max distance to bounds
+    ...  # print one KB_SUMMARY line with boundary_all, boundary_answered,
+    ...  #   n_unanswered, and every other aggregate metric
+    return (boundary_all, ci_half_width)      # Wilson on all claims; failures count wrong
 
 specificity.run(kbench.llm)
 ```

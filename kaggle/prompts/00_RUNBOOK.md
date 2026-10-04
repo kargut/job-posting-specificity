@@ -27,6 +27,9 @@ The benchmark in one paragraph: each item is one claim extracted from a job
 ad. The model applies the project's written tier rulebook and says whether the
 claim is Tier 1 (concrete), 2 (general direction) or 3 (empty slogan). The
 headline metric is **Tier 1 boundary accuracy** against the blind gold labels.
+The task returns that accuracy with unanswered claims counted wrong. The
+comparison in the post uses the same accuracy on claims that received a tier,
+with the unanswered count beside it.
 Two tasks: `job-ad-specificity-rule` (the full rulebook, including "quote the
 particular", and an output field for that quote) and
 `job-ad-specificity-definitions` (definitions and examples only — the rulebook

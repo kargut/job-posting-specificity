@@ -79,14 +79,14 @@ Same settings for every model: Kaggle defaults (temperature 0, provider-default 
 
 ![Tier 1 boundary accuracy per model with 95% intervals, against the human self-agreement band]({{FIGURE_URL}})
 
-| Model | Boundary, rule [95% CI] | Ceiling subset | Rule − definitions | Valid quotes | $ / 1,000 claims |
-|---|---|---|---|---|---|
+| Model | Boundary, all claims [95% CI] | Unanswered | Boundary, answered [95% CI] | Ceiling subset | Rule − definitions | Valid quotes | $ / 1,000 claims |
+|---|---|---|---|---|---|---|---|
 {{RESULT_ROWS}}
-| *Me, second blind pass* | — | 48/50 | +15.4pp (unmatched samples) | enforced by my labeling tool | — |
+| *Me, second blind pass* | — | 0 | — | 48/50 | +15.4pp (unmatched samples) | enforced by my labeling tool | — |
 
-<!-- FILL RESULT_ROWS from kaggle/RESULTS.md headline table. Sort by rule boundary accuracy. Bold every model in the "indistinguishable from the best" group. If step 1 dropped ceiling claims, replace 48/50 with the recomputed value everywhere. -->
+<!-- FILL RESULT_ROWS from kaggle/RESULTS.md headline table. Sort by answered rule boundary accuracy. Bold every model in the "indistinguishable from the best" group, judged on the answered column. The all-claims column is the leaderboard number; unanswered claims count wrong there. If a model's two boundary numbers differ, the finding is the unanswered batch, not a worse rubric. If step 1 dropped ceiling claims, replace 48/50 with the recomputed value everywhere. -->
 
-With {{N_CLAIMS}} claims an interval is about ±5.5 points wide, so I group rather than rank: {{BEST_GROUP_SENTENCE}}
+With {{N_CLAIMS}} claims an interval is about ±5.5 points wide, so I group on the answered column rather than rank: {{BEST_GROUP_SENTENCE}}
 
 <!--
 FILL the three findings the user chose in LOG step 4, in that order.
