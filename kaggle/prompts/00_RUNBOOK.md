@@ -4,7 +4,7 @@ Read this file first in every session. Then run the numbered prompt for the
 step you are on. One prompt per session is fine; each one starts by reading
 `kaggle/LOG.md` to see where the previous one stopped.
 
-**Model:** Claude Opus 5.5, with the repo folder connected
+**Model:** Cursor Grok 4.7, with the repo folder connected
 (`C:\work\claude_vague\job-posting-specificity`).
 **Challenge:** https://dev.to/challenges/kaggle-2026-09-23 — submissions close
 **11 October 2026, 23:59 PDT** (12 October, 09:59 Riga/Kyiv time).
