@@ -28,9 +28,11 @@ ad. The model applies the project's written tier rulebook and says whether the
 claim is Tier 1 (concrete), 2 (general direction) or 3 (empty slogan). The
 headline metric is **Tier 1 boundary accuracy** against the blind gold labels.
 Two tasks: `job-ad-specificity-rule` (the full rulebook, including "quote the
-particular") and `job-ad-specificity-definitions` (definitions and examples
-only — the rulebook as it stood before the written rule). Every model is
-reported next to the **human ceiling measured on the same claims**.
+particular", and an output field for that quote) and
+`job-ad-specificity-definitions` (definitions and examples only — the rulebook
+as it stood before the written rule; the model returns a tier and a short
+reason, and is not asked to quote anything). Every model is reported next to
+the **human ceiling measured on the same claims**.
 
 ## Numbers already measured — do not re-derive, check against them
 

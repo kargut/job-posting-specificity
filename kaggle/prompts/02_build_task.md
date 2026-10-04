@@ -72,14 +72,31 @@ names boards), scoring formula, "what this score does not measure", output
 format and how-to sections from the original prompts, and any KNOWN DEFECT
 block.
 
-Append to both variants:
+Append the same placeholder note to both variants: bracketed tokens such as
+`[Employer]`, `[Employer Product]`, `[City]`, `[Figure]` stand for redacted
+names or numbers; say what each stands for and nothing about which tier it
+implies.
 
-1. A placeholder note: bracketed tokens such as `[Employer]`,
-   `[Employer Product]`, `[City]`, `[Figure]` stand for redacted names or
-   numbers; say what each stands for and nothing about which tier it implies.
-2. The output contract: return every claim_uid exactly once, `tier` in
-   {1,2,3}, `quoted_particular` — for Tier 1 the exact substring of the claim
-   that is the particular, otherwise empty — and `reasoning` under 25 words.
+Append a different output contract to each variant. The definitions contract
+must not teach the mechanical test.
+
+- `rule`: return every claim_uid exactly once, `tier` in {1,2,3},
+  `quoted_particular` — for Tier 1 the exact substring of the claim that is
+  the particular, otherwise empty — and `reasoning` under 25 words.
+- `definitions`: return every claim_uid exactly once, `tier` in {1,2,3}, and
+  `reasoning` under 25 words. Do not mention quotes, particulars, evidence
+  spans, or substrings.
+
+Then check the ablation was not filled back in:
+
+1. `prompt_definitions.md` and `task_definitions.py` contain no
+   `quoted_particular`.
+2. The definitions output contract does not tell the model to quote, name, or
+   return a span.
+3. If the git-sourced definitions body itself contains "Name the Particular"
+   or an instruction to quote a token as the Tier 1 test, stop and show that
+   passage. That means the parent commit is already the rule. Do not delete
+   historical text to make the check pass.
 
 Leak-scan both files against `kaggle/private/lexicon.json`; zero hits.
 Record each file's sha256 and approximate token count in the log.
@@ -92,9 +109,12 @@ Record each file's sha256 and approximate token count in the log.
   `eval/ingest_classification.py` (folds en/em dashes and curly quotes,
   collapses whitespace). Copy it; do not import from `eval/`.
 - `score_claim(gold_row, pred)` → `boundary_correct`, `exact_correct`,
-  `quote_valid` (pred Tier 1 ⇒ non-empty `quoted_particular` that is a
-  normalised substring of `text`), `quote_matches_gold` (both Tier 1 and
-  one quote contains the other after normalising), `missing`.
+  `quote_valid` (rule variant only: pred Tier 1 ⇒ non-empty
+  `quoted_particular` that is a normalised substring of `text`),
+  `quote_matches_gold` (rule variant only: both Tier 1 and one quote contains
+  the other after normalising), `missing`. Definitions predictions have no
+  quote field. Those two flags are `null` there, not `false` — a false would
+  mean the model failed a test it was not given.
 - `score_batch(gold_rows, preds)` — a missing claim counts **wrong** on every
   metric and increments `missing`; duplicate claim_uid keeps the first and
   increments `duplicates`; unknown claim_uid is ignored and increments
@@ -140,6 +160,9 @@ def load_claims():
     n = os.environ.get("KB_SUBSET")          # local smoke runs only
     return df[df.batch_id.isin(sorted(df.batch_id.unique())[:int(n)])] if n else df
 
+# Rule render only. The definitions render has claim_uid, tier, reasoning —
+# no quoted_particular field and no description that mentions one.
+# The schema is sent to the model; a shared class would leak the test.
 class ClaimTier(pydantic.BaseModel):
     claim_uid: str
     tier: int
@@ -175,6 +198,11 @@ Rules for the template:
 
 - `claims_json` holds only `claim_uid`, `text`, `context_section` — never a
   gold column. Gold is joined back after the model answers.
+- The two renders share the scorer and the batch loop. They do not share the
+  response schema. `TASK_VARIANT == "definitions"` uses a model with
+  `claim_uid`, `tier`, and `reasoning` only. Do not add an optional quote
+  field "for later". `KB_DETAIL` on that variant prints `quote_valid` and
+  `quote_matches_gold` as JSON `null`.
 - If `tuple[float, float]` does not render as value ± CI on Kaggle, fall back
   to `-> float` and keep the CI in `KB_SUMMARY`. Check the SDK's
   `results.py` for how `MetricWithCI` is displayed before deciding.
@@ -207,8 +235,9 @@ If `MODEL_PROXY_API_KEY` has expired, run `kaggle b auth -y` and retry once.
 
 ## CHECKPOINT
 
-Show: the two commit hashes the prompts came from, prompt token counts, test
-results, the 2-batch validation output, and the per-model cost
+Show: the two commit hashes the prompts came from, the two output contracts
+side by side, prompt token counts, the definitions-file check from step 2.2,
+test results, the 2-batch validation output, and the per-model cost
 extrapolation. Wait for approval. Then write the log section and stop.
 
 ## Log section to append
@@ -220,5 +249,6 @@ extrapolation. Wait for approval. Then write the log section and stop.
 - Scorer golden tests: pipeline 130/150 & 115/150 reproduced; human 48/50 & 43/50 reproduced
 - Validation (2 batches, default model): boundary k/20, usage populated: yes/no
 - Extrapolated cost per full run per model: ...
+- Output contracts differ: rule asks for quoted_particular; definitions asks for tier + reasoning only
 - Decisions: batch size 10, cross-posting batches, return type ...
 ```

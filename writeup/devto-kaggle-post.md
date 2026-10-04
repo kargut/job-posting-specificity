@@ -37,12 +37,12 @@ Why this capability? Most LLM work in production looks like this. A person write
 
 | Task | What the model gets |
 |---|---|
-| `job-ad-specificity-rule` | The full rulebook as it stood when I labeled the gold set, including one mechanical test: *quote the particular* |
-| `job-ad-specificity-definitions` | Tier definitions and examples only: the rulebook before I wrote that test |
+| `job-ad-specificity-rule` | The full rulebook as it stood when I labeled the gold set, including one mechanical test: *quote the particular*. The answer includes that quote |
+| `job-ad-specificity-definitions` | Tier definitions and examples only: the rulebook before I wrote that test. The answer is a tier and a short reason. This task does not ask for a quote |
 
 The test: a claim is Tier 1 only if you can quote the token that makes it checkable. A number, a named technology, a place, a timeframe. How serious the work sounds is not a criterion.
 
-When I wrote that rule down, my own Tier 1 self-agreement went from 80.6% to 96.0%. The two samples were not matched, so that is not a causal estimate. The pair of tasks asks a simpler question: does the same paragraph move a model?
+When I wrote that rule down, my own Tier 1 self-agreement went from 80.6% to 96.0%. The two samples were not matched, so that is not a causal estimate. The pair of tasks asks whether that rule moves a model. Only the rule task is asked to quote a span.
 
 Both prompts come from the repo's git history, at the commits that match my labeling dates. The model gets the rulebook I actually had, not the fixes I wrote down later.
 

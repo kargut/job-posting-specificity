@@ -41,8 +41,8 @@ Per model × variant:
 | Same, excluding `preregistered_suspect` rows | Do the suspect labels move the ranking? |
 | Exact-tier accuracy | A floor: gold has no Tier 3, so every Tier 3 prediction is wrong by construction. Say so in the table caption |
 | Tier 1 precision / recall / F1 | Recall < precision means the model is stricter than the annotator, as the original pipeline was (0.754 / 0.902) |
-| Quote validity | Share of Tier 1 predictions whose quoted particular is literally in the claim — the mechanical rule the annotator's own labeler enforces |
-| Quote agreement with gold | Of claims both call Tier 1, share where the quoted particulars overlap |
+| Quote validity | **Rule task only.** Share of Tier 1 predictions whose quoted particular is literally in the claim — the mechanical rule the annotator's own labeler enforces. Definitions rows leave this blank; the model was not asked for a quote |
+| Quote agreement with gold | **Rule task only.** Of claims both call Tier 1, share where the quoted particulars overlap. Blank on the definitions task |
 | Tier 3 rate | Compare with gold 0/150 and human pass 2: 5/50 |
 | Structural errors | missing / duplicate / unknown claim_uids |
 | Tokens, cost, latency | Per 1,000 claims, from Kaggle's usage fields. Also per 1,000 postings at the corpus's 745 claims / 15 postings ≈ 49.7 claims per posting — Stage 2 only, say so |
