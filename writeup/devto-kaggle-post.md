@@ -1,6 +1,6 @@
 ---
 title: "Give an LLM no facts and ask for a job ad. What does it commit to?"
-published: false
+published: https://dev.to/kargut/give-an-llm-no-facts-and-ask-for-a-job-ad-what-does-it-commit-to-2ma5
 tags: devchallenge, kagglechallenge, ai, machinelearning
 ---
 
